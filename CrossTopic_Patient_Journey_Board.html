@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient Journey Board — Cerner CIS</title>
+<style>
+  :root{
+    --ink:#0f172a; --muted:#64748b;
+    --reg-bg:#DBEAFE; --ed-bg:#FEE2E2; --lab-bg:#DCFCE7;
+    --di-bg:#EDE9FE; --nur-bg:#CCFBF1; --mha-bg:#FFEDD5;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background-color:#fbfbfd;
+    background-image:radial-gradient(#dbe2ea 1.4px, transparent 1.4px);
+    background-size:26px 26px;
+    padding:30px 22px 46px;
+  }
+  .wrap{max-width:1360px;margin:0 auto}
+  h1{font-size:32px;margin:0 0 4px;letter-spacing:-.5px}
+  .tag{color:var(--muted);font-size:15px;margin:0 0 18px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 22px}
+  .lg{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:#334155;
+      background:#fff;border:1px solid #e2e8f0;border-radius:999px;padding:5px 12px 5px 8px;
+      box-shadow:0 1px 2px rgba(15,23,42,.05)}
+  .dot{width:14px;height:14px;border-radius:5px}
+  .scn{background:#ffffffcc;border:1px solid #eef2f7;border-radius:20px;
+       padding:14px 16px 8px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
+  .scn h2{font-size:18px;margin:2px 0 1px}
+  .scn .sub{color:var(--muted);font-size:12.5px;margin:0 0 2px}
+  .flow{position:relative;width:100%;overflow:hidden}
+  .canvas{position:relative}
+  svg.links{position:absolute;inset:0;overflow:visible;pointer-events:none}
+  .note{position:absolute;border-radius:15px;padding:9px 10px;
+        box-shadow:0 8px 15px rgba(15,23,42,.12);
+        display:flex;flex-direction:column;gap:1px;
+        transition:transform .18s ease, box-shadow .18s ease;}
+  .note:hover{transform:translateY(-4px) rotate(0deg) scale(1.04)!important;
+              box-shadow:0 14px 26px rgba(15,23,42,.20);z-index:5}
+  .note .emj{line-height:1.05}
+  .note .lbl{font-weight:700;line-height:1.15}
+  .note .enc{font-style:italic;opacity:.85;line-height:1.1}
+  .note .pill{align-self:flex-start;margin-top:auto;font-weight:800;
+              letter-spacing:.3px;color:#fff;border-radius:999px;padding:2px 7px}
+  .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🗺️ Patient Journey Board</h1>
+  <p class="tag">Cerner CIS · registration → discharge · seven realistic paths across the team's streams</p>
+  <div class="legend" id="legend"></div>
+  <div id="board"></div>
+  <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
+</div>
+<script>
+const STREAM = {
+  Reg:{bg:'var(--reg-bg)',ac:'#1D4ED8',name:'Registration & Scheduling'},
+  ED:{bg:'var(--ed-bg)',ac:'#DC2626',name:'Emergency (ED)'},
+  Lab:{bg:'var(--lab-bg)',ac:'#15803D',name:'Lab'},
+  DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging'},
+  Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing'},
+  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions'},
+};
+const SCENARIOS = [
+  {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment',
+   steps:[['📅','Book appointment','Outpatient · Single','Reg'],['📝','Register / check-in','Outpatient','Reg'],
+          ['🩺','Clinic visit + orders','Outpatient','Nursing'],['🩸','Bloodwork','Lab','Lab'],
+          ['🩻','Chest X-ray','DI','DI'],['🏡','Review & discharge','Outpatient','Reg']]},
+  {title:'ED Presentation → Inpatient Admission', sub:'Emergency converts to Inpatient',
+   steps:[['🚑','Quick-register','Emergency','Reg'],['🩺','Triage & assess','Emergency','ED'],
+          ['🩸','Bloodwork','Lab','Lab'],['🩻','CT scan','DI','DI'],
+          ['🛏️','Admit (convert)','Emergency → Inpatient','ED'],['🏥','Inpatient care','Inpatient','Nursing'],
+          ['🏡','Discharge','Inpatient','Nursing']]},
+  {title:'Elective Day Surgery', sub:'Pre-admit Outpatient + Day Surgery',
+   steps:[['📅','Pre-admit clinic','Outpatient · Single','Reg'],['🩸','Pre-op labs','Lab','Lab'],
+          ['🩻','Pre-op imaging','DI','DI'],['🔪','Pre-op / procedure','Day Surgery','Nursing'],
+          ['😴','PACU recovery','Day Surgery','Nursing'],['🏡','Discharge home','Day Surgery','Reg']]},
+  {title:'Recurring Infusion Therapy', sub:'Outpatient in a Bed · Recurring',
+   steps:[['📅','Book series','Recurring','Reg'],['🪪','Check-in','Outpatient in a Bed','Reg'],
+          ['🩸','Pre-infusion bloodwork','Lab','Lab'],['💉','Infusion in bed','Outpatient in a Bed','Nursing'],
+          ['📈','Monitor & discharge','Outpatient in a Bed','Nursing'],['🔁','Next visit (recurring)','Recurring','Reg']]},
+  {title:'Mental Health Crisis via ED', sub:'Emergency converts to Inpatient (MHA unit)',
+   steps:[['🚑','Register','Emergency','Reg'],['🛟','Triage & safety','Emergency','ED'],
+          ['🧪','Tox / bloodwork','Lab','Lab'],['💬','MHA consult','Emergency','MHA'],
+          ['🛏️','Admit (convert)','Emergency → Inpatient','MHA'],['🏥','MHA inpatient care','Inpatient','MHA'],
+          ['🏡','Discharge + follow-up','Inpatient','MHA']]},
+  {title:'MHA Outpatient Group Program', sub:'Outpatient · Group Session',
+   steps:[['📩','Referral & booking','Group Session','Reg'],['📝','Register','Outpatient','Reg'],
+          ['👥','Group therapy session','Outpatient','MHA'],['🔁','Recurring group series','Group Session','MHA'],
+          ['✅','Program discharge','Outpatient','MHA']]},
+  {title:'Standalone Lab & DI (order-driven)', sub:'Lab + DI · Single',
+   steps:[['📄','GP requisition','Single','Reg'],['📝','Register','Lab / DI','Reg'],
+          ['🩸','Bloodwork','Lab','Lab'],['🫧','Ultrasound','DI','DI'],
+          ['📤','Results to provider','Lab / DI','Reg'],['🏡','Discharge','Lab / DI','Reg']]},
+];
+function rng(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
+const MAXN = Math.max(...SCENARIOS.map(s=>s.steps.length));
+
+const leg=document.getElementById('legend');
+for(const k in STREAM){const s=STREAM[k];
+  leg.insertAdjacentHTML('beforeend',
+    `<span class="lg"><span class="dot" style="background:${s.ac}"></span>${k} — ${s.name}</span>`);}
+
+const board=document.getElementById('board');
+
+function render(){
+  board.innerHTML='';
+  const pad=6;
+  const avail=Math.max(360, board.clientWidth - 34); // fit inside .scn padding, no scroll
+  // one card width shared by all lanes (sized to the busiest lane) so nothing overflows
+  let cardW=(avail - 2*pad - (MAXN-1)*Math.max(10, avail*0.02)) / MAXN;
+  cardW=Math.max(78, Math.min(150, cardW));
+  const cardH=Math.round(cardW*0.74);
+  const H=Math.round(cardH + cardH*0.62 + 44);
+  const fEmj=Math.round(cardW*0.20), fLbl=Math.max(10, cardW*0.088),
+        fEnc=Math.max(8.5, cardW*0.066), fPill=Math.max(8, cardW*0.058);
+  const oscil=Math.round(cardH*0.55);
+
+  SCENARIOS.forEach((sc,si)=>{
+    const sec=document.createElement('div'); sec.className='scn';
+    sec.innerHTML=`<h2>${si+1}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
+    const flow=document.createElement('div'); flow.className='flow';
+    const canvas=document.createElement('div'); canvas.className='canvas';
+    const n=sc.steps.length;
+    const W=avail;
+    const gap=(W - 2*pad - n*cardW)/(n-1);
+    canvas.style.width=W+'px'; canvas.style.height=H+'px';
+    const rand=rng(si*97+13);
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','links'); svg.setAttribute('width',W); svg.setAttribute('height',H);
+    canvas.appendChild(svg);
+    const pos=[];
+    sc.steps.forEach((st,i)=>{
+      const x=pad + i*(cardW+gap);
+      const y=22 + (i%2===0?0:oscil) + (rand()*8-4);
+      const rot=(rand()*6-3).toFixed(2);
+      pos.push({x,y});
+      const [emj,lbl,enc,stream]=st; const s=STREAM[stream];
+      const note=document.createElement('div'); note.className='note';
+      note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
+      note.style.minHeight=cardH+'px'; note.style.background=s.bg;
+      note.style.transform=`rotate(${rot}deg)`;
+      note.innerHTML=
+        `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
+        `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
+        `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
+        `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
+      canvas.appendChild(note);
+    });
+    for(let i=0;i<n-1;i++){
+      const a=pos[i], b=pos[i+1];
+      const x1=a.x+cardW, y1=a.y+cardH/2, x2=b.x, y2=b.y+cardH/2, dx=x2-x1;
+      const wob=(rand()*40-20);
+      const cx1=x1+dx*0.42, cy1=y1+wob, cx2=x2-dx*0.42, cy2=y2-wob;
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d',`M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2-8} ${y2}`);
+      path.setAttribute('fill','none');
+      const col=STREAM[sc.steps[i+1][3]].ac;
+      path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
+      path.setAttribute('stroke-linecap','round'); path.setAttribute('opacity','0.72');
+      svg.appendChild(path);
+      const ang=Math.atan2(y2-cy2,(x2-8)-cx2), ah=8, axp=x2-3, ayp=y2;
+      const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*Math.cos(ang-0.5)} ${ayp-ah*Math.sin(ang-0.5)}, ${axp-ah*Math.cos(ang+0.5)} ${ayp-ah*Math.sin(ang+0.5)}`);
+      tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
+      svg.appendChild(tri);
+    }
+    flow.appendChild(canvas); sec.appendChild(flow); board.appendChild(sec);
+  });
+}
+render();
+let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(render,120);});
+</script>
+</body>
+</html>
