@@ -59,23 +59,29 @@
 </div>
 <script>
 const STREAM = {
-  Reg:{bg:'var(--reg-bg)',ac:'#1D4ED8',name:'Registration & Scheduling',facilitator:'Boon',app:'Cerner CIS'},
-  ED:{bg:'var(--ed-bg)',ac:'#DC2626',name:'Emergency (ED)',facilitator:'Via',app:'Cerner CIS'},
-  Lab:{bg:'var(--lab-bg)',ac:'#15803D',name:'Lab',facilitator:'Bode',app:'Cerner CIS'},
-  DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging',facilitator:'Harjot',app:'Cerner CIS'},
-  Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing',facilitator:'Via',app:'Cerner CIS'},
-  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Allan',app:'Cerner CIS'},
+  Reg:{bg:'var(--reg-bg)',ac:'#1D4ED8',name:'Registration & Scheduling',facilitator:'Boon'},
+  ED:{bg:'var(--ed-bg)',ac:'#DC2626',name:'Emergency (ED)',facilitator:'Via'},
+  Lab:{bg:'var(--lab-bg)',ac:'#15803D',name:'Lab',facilitator:'Bode'},
+  DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging',facilitator:'Harjot'},
+  Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing',facilitator:'Via'},
+  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Allan'},
 };
 const SCENARIOS = [
   {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment',
-   steps:[['📅','Book appointment','Outpatient · Single','Reg'],['📝','Register / check-in','Outpatient','Reg'],
-          ['🩺','Clinic visit + orders','Outpatient','Nursing'],['🩸','Bloodwork','Lab','Lab'],
-          ['🩻','Chest X-ray','DI','DI'],['🏡','Review & discharge','Outpatient','Reg']]},
+   steps:[['📅','Book appointment','Outpatient · Single','Reg','SchAppBook'],
+          ['📝','Register / check-in','Outpatient','Reg','SchAppBook'],
+          ['🩺','Clinic visit + orders','Outpatient','Nursing','PowerChart'],
+          ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
+          ['🩻','Chest X-ray','DI','DI','Department Order Entry'],
+          ['🏡','Review & discharge','Outpatient','Reg']]},
   {title:'ED Presentation → Inpatient Admission', sub:'Emergency converts to Inpatient',
-   steps:[['🚑','Quick-register','Emergency','Reg'],['🩺','Triage & assess','Emergency','ED'],
-          ['🩸','Bloodwork','Lab','Lab'],['🩻','CT scan','DI','DI'],
-          ['🛏️','Admit (convert)','Emergency → Inpatient','ED'],['🏥','Inpatient care','Inpatient','Nursing'],
-          ['🏡','Discharge','Inpatient','Nursing']]},
+   steps:[['🚑','Quick-register','Emergency','Reg','FirstNet'],
+          ['🩺','Triage & assess','Emergency','ED','PowerChart'],
+          ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
+          ['🩻','CT scan','DI','DI','Department Order Entry'],
+          ['🛏️','Admit (convert)','Emergency → Inpatient','ED','PowerChart'],
+          ['🏥','Inpatient care','Inpatient','Nursing','PowerChart'],
+          ['🏡','Discharge','Inpatient','Nursing','PowerChart']]},
   {title:'Elective Day Surgery', sub:'Pre-admit Outpatient + Day Surgery',
    steps:[['📅','Pre-admit clinic','Outpatient · Single','Reg'],['🩸','Pre-op labs','Lab','Lab'],
           ['🩻','Pre-op imaging','DI','DI'],['🔪','Pre-op / procedure','Day Surgery','Nursing'],
@@ -141,7 +147,7 @@ function render(){
       const y=22 + (i%2===0?0:oscil) + (rand()*8-4);
       const rot=(rand()*6-3).toFixed(2);
       pos.push({x,y});
-      const [emj,lbl,enc,stream]=st; const s=STREAM[stream];
+      const [emj,lbl,enc,stream,app]=st; const s=STREAM[stream];
       const note=document.createElement('div'); note.className='note';
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
       note.style.minHeight=cardH+'px'; note.style.background=s.bg;
@@ -151,7 +157,7 @@ function render(){
         `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
         `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
         `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${s.facilitator}</div>`+
-        `<div class="meta" style="font-size:${fMeta}px">App: ${s.app}</div>`+
+        (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
       canvas.appendChild(note);
     });
