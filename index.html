@@ -83,9 +83,12 @@ const SCENARIOS = [
           ['🏥','Inpatient care','Inpatient','Nursing','PowerChart'],
           ['🏡','Discharge','Inpatient','Nursing','PowerChart']]},
   {title:'Elective Day Surgery', sub:'Pre-admit Outpatient + Day Surgery',
-   steps:[['📅','Pre-admit clinic','Outpatient · Single','Reg'],['🩸','Pre-op labs','Lab','Lab'],
-          ['🩻','Pre-op imaging','DI','DI'],['🔪','Pre-op / procedure','Day Surgery','Nursing'],
-          ['😴','PACU recovery','Day Surgery','Nursing'],['🏡','Discharge home','Day Surgery','Reg']]},
+   steps:[['📅','Pre-admit clinic','Outpatient · Single','Reg','SchAppBook'],
+          ['🩸','Pre-op labs','Lab','Lab','Department Order Entry'],
+          ['🩻','Pre-op imaging','DI','DI','Department Order Entry'],
+          ['🔪','Pre-op / procedure','Day Surgery','Nursing','PowerChart','Rijo'],
+          ['😴','PACU recovery','Day Surgery','Nursing','PowerChart'],
+          ['🏡','Discharge home','Day Surgery','Reg','PM Office']]},
   {title:'Recurring Infusion Therapy', sub:'Outpatient in a Bed · Recurring',
    steps:[['📅','Book series','Recurring','Reg'],['🪪','Check-in','Outpatient in a Bed','Reg'],
           ['🩸','Pre-infusion bloodwork','Lab','Lab'],['💉','Infusion in bed','Outpatient in a Bed','Nursing'],
@@ -147,7 +150,7 @@ function render(){
       const y=22 + (i%2===0?0:oscil) + (rand()*8-4);
       const rot=(rand()*6-3).toFixed(2);
       pos.push({x,y});
-      const [emj,lbl,enc,stream,app]=st; const s=STREAM[stream];
+      const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
       const note=document.createElement('div'); note.className='note';
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
       note.style.minHeight=cardH+'px'; note.style.background=s.bg;
@@ -156,7 +159,7 @@ function render(){
         `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
         `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
         `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
-        `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${s.facilitator}</div>`+
+        `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
         (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
       canvas.appendChild(note);
