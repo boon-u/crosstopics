@@ -43,6 +43,7 @@
   .note .emj{line-height:1.05}
   .note .lbl{font-weight:700;line-height:1.15}
   .note .enc{font-style:italic;opacity:.85;line-height:1.1}
+  .note .meta{opacity:.9;line-height:1.15;margin-top:2px}
   .note .pill{align-self:flex-start;margin-top:auto;font-weight:800;
               letter-spacing:.3px;color:#fff;border-radius:999px;padding:2px 7px}
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
@@ -58,12 +59,12 @@
 </div>
 <script>
 const STREAM = {
-  Reg:{bg:'var(--reg-bg)',ac:'#1D4ED8',name:'Registration & Scheduling'},
-  ED:{bg:'var(--ed-bg)',ac:'#DC2626',name:'Emergency (ED)'},
-  Lab:{bg:'var(--lab-bg)',ac:'#15803D',name:'Lab'},
-  DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging'},
-  Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing'},
-  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions'},
+  Reg:{bg:'var(--reg-bg)',ac:'#1D4ED8',name:'Registration & Scheduling',facilitator:'Boon',app:'Cerner CIS'},
+  ED:{bg:'var(--ed-bg)',ac:'#DC2626',name:'Emergency (ED)',facilitator:'Via',app:'Cerner CIS'},
+  Lab:{bg:'var(--lab-bg)',ac:'#15803D',name:'Lab',facilitator:'Bode',app:'Cerner CIS'},
+  DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging',facilitator:'Harjot',app:'Cerner CIS'},
+  Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing',facilitator:'Via',app:'Cerner CIS'},
+  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Allan',app:'Cerner CIS'},
 };
 const SCENARIOS = [
   {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment',
@@ -114,10 +115,11 @@ function render(){
   // one card width shared by all lanes (sized to the busiest lane) so nothing overflows
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(10, avail*0.02)) / MAXN;
   cardW=Math.max(78, Math.min(150, cardW));
-  const cardH=Math.round(cardW*0.74);
+  const cardH=Math.round(cardW*0.98);
   const H=Math.round(cardH + cardH*0.62 + 44);
-  const fEmj=Math.round(cardW*0.20), fLbl=Math.max(10, cardW*0.088),
-        fEnc=Math.max(8.5, cardW*0.066), fPill=Math.max(8, cardW*0.058);
+  const fEmj=Math.round(cardW*0.18), fLbl=Math.max(10, cardW*0.088),
+        fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
+        fPill=Math.max(8, cardW*0.058);
   const oscil=Math.round(cardH*0.55);
 
   SCENARIOS.forEach((sc,si)=>{
@@ -148,6 +150,8 @@ function render(){
         `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
         `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
         `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
+        `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${s.facilitator}</div>`+
+        `<div class="meta" style="font-size:${fMeta}px">App: ${s.app}</div>`+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
       canvas.appendChild(note);
     });
