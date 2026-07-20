@@ -9,6 +9,7 @@
     --ink:#0f172a; --muted:#64748b;
     --reg-bg:#DBEAFE; --ed-bg:#FEE2E2; --lab-bg:#DCFCE7;
     --di-bg:#EDE9FE; --nur-bg:#CCFBF1; --mha-bg:#FFEDD5;
+    --ems-bg:#CFFAFE; --peri-bg:#FCE7F3;
   }
   *{box-sizing:border-box}
   body{
@@ -52,7 +53,7 @@
 <body>
 <div class="wrap">
   <h1>🗺️ Patient Journey Board</h1>
-  <p class="tag">Cerner CIS · registration → discharge · six realistic paths across the team's streams</p>
+  <p class="tag">Cerner CIS · registration → discharge · eight realistic paths across the team's streams</p>
   <div class="legend" id="legend"></div>
   <div id="board"></div>
   <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
@@ -65,6 +66,8 @@ const STREAM = {
   DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging',facilitator:'Harjot'},
   Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing',facilitator:'Via'},
   MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Allan'},
+  EMS:{bg:'var(--ems-bg)',ac:'#0891B2',name:'EMS / Paramedic',facilitator:'TBD'},
+  Peri:{bg:'var(--peri-bg)',ac:'#DB2777',name:'Perioperative (OR)',facilitator:'TBD'},
 };
 const SCENARIOS = [
   {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment',
@@ -116,6 +119,23 @@ const SCENARIOS = [
           ['🫧','Ultrasound','DI','DI','Department Order Entry'],
           ['📤','Results to provider','Lab / DI','Reg','PowerChart'],
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
+  {title:'MVA Trauma — Emergency Surgery → Elective Return', sub:'Pre-hospital → Emergency → Inpatient → OR → (later) Day Surgery',
+   wrapAfter:5,
+   steps:[['🚑','Pre-arrival & trauma activation','Pre-hospital','EMS'],
+          ['🚨','Trauma bay + documentation','Emergency','ED'],
+          ['🧾','Order entry: Lab / Imaging','Emergency','ED'],
+          ['🩸','Specimen collection','Lab','Lab'],
+          ['🩻','Trauma imaging (CT)','DI','DI'],
+          ['💊','Medication administration','Emergency','Nursing'],
+          ['🛏️','Admission: CapMan · PAO · handover','Emergency → Inpatient','Reg'],
+          ['🏥','Inpatient care + documentation','Inpatient','Nursing'],
+          ['✅','Pre-op checklist','Inpatient','Nursing'],
+          ['🔪','Emergency surgery','Inpatient · OR','Peri'],
+          ['😴','PACU','Inpatient','Peri'],
+          ['🛌','Post-op inpatient care','Inpatient','Nursing'],
+          ['🏡','Discharge (returns for elective)','Inpatient','Reg'],
+          ['📅','Book elective surgery','Day Surgery · Single','Reg'],
+          ['🔧','Elective day surgery','Day Surgery · pre-op→PACU','Peri']]},
 ];
 function rng(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
 function rowLens(sc){
