@@ -9,7 +9,7 @@
     --ink:#0f172a; --muted:#64748b;
     --reg-bg:#DBEAFE; --ed-bg:#FEE2E2; --lab-bg:#DCFCE7;
     --di-bg:#EDE9FE; --nur-bg:#CCFBF1; --mha-bg:#FFEDD5;
-    --ems-bg:#CFFAFE; --peri-bg:#FCE7F3;
+    --ems-bg:#CFFAFE; --peri-bg:#FCE7F3; --prov-bg:#FEF3C7;
   }
   *{box-sizing:border-box}
   body{
@@ -68,6 +68,7 @@ const STREAM = {
   MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Allan'},
   EMS:{bg:'var(--ems-bg)',ac:'#0891B2',name:'EMS / Paramedic',facilitator:'TBD'},
   Peri:{bg:'var(--peri-bg)',ac:'#DB2777',name:'Perioperative (OR)',facilitator:'TBD'},
+  Provider:{bg:'var(--prov-bg)',ac:'#B45309',name:'Providers',facilitator:'Mahak'},
 };
 const SCENARIOS = [
   {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment',
@@ -76,7 +77,7 @@ const SCENARIOS = [
           ['🩺','Clinic visit + orders','Outpatient','Nursing','PowerChart'],
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
           ['🩻','Chest X-ray','DI','DI','Department Order Entry'],
-          ['🏡','Review & discharge','Outpatient','Reg']]},
+          ['🏡','Review & discharge','Outpatient','Provider']]},
   {title:'ED Presentation → Day Surgery', sub:'Emergency converts to Inpatient, then elective day surgery',
    wrapAfter:6,
    steps:[['🚑','Quick-register','Emergency','Reg','FirstNet'],
