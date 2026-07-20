@@ -28,24 +28,24 @@
       box-shadow:0 1px 2px rgba(15,23,42,.05)}
   .dot{width:14px;height:14px;border-radius:5px}
   .scn{background:#ffffffcc;border:1px solid #eef2f7;border-radius:20px;
-       padding:14px 16px 8px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
+       padding:14px 16px 16px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
   .scn h2{font-size:18px;margin:2px 0 1px}
-  .scn .sub{color:var(--muted);font-size:12.5px;margin:0 0 2px}
-  .flow{position:relative;width:100%;overflow:hidden}
+  .scn .sub{color:var(--muted);font-size:12.5px;margin:0 0 8px}
+  .flow{position:relative;width:100%;overflow:visible}
   .canvas{position:relative}
   svg.links{position:absolute;inset:0;overflow:visible;pointer-events:none}
-  .note{position:absolute;border-radius:15px;padding:9px 10px;
+  .note{position:absolute;border-radius:15px;padding:11px 11px 10px;
         box-shadow:0 8px 15px rgba(15,23,42,.12);
-        display:flex;flex-direction:column;gap:1px;
+        display:flex;flex-direction:column;gap:3px;
         transition:transform .18s ease, box-shadow .18s ease;}
   .note:hover{transform:translateY(-4px) rotate(0deg) scale(1.04)!important;
               box-shadow:0 14px 26px rgba(15,23,42,.20);z-index:5}
   .note .emj{line-height:1.05}
-  .note .lbl{font-weight:700;line-height:1.15}
-  .note .enc{font-style:italic;opacity:.85;line-height:1.1}
-  .note .meta{opacity:.9;line-height:1.15;margin-top:2px}
+  .note .lbl{font-weight:700;line-height:1.2}
+  .note .enc{font-style:italic;opacity:.85;line-height:1.2}
+  .note .meta{opacity:.9;line-height:1.25;margin-top:1px}
   .note .pill{align-self:flex-start;margin-top:auto;font-weight:800;
-              letter-spacing:.3px;color:#fff;border-radius:999px;padding:2px 7px}
+              letter-spacing:.3px;color:#fff;border-radius:999px;padding:3px 8px}
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
 </style>
 </head>
@@ -151,17 +151,20 @@ function drawArrow(svg, x1,y1,x2,y2, col, rand){
 
 function render(){
   board.innerHTML='';
-  const pad=6;
+  const pad=8;
   const avail=Math.max(360, board.clientWidth - 34);
-  let cardW=(avail - 2*pad - (MAXN-1)*Math.max(10, avail*0.02)) / MAXN;
-  cardW=Math.max(78, Math.min(150, cardW));
-  const cardH=Math.round(cardW*0.98);
-  const rowH=Math.round(cardH + cardH*0.62 + 44);
-  const fEmj=Math.round(cardW*0.18), fLbl=Math.max(10, cardW*0.088),
-        fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
-        fPill=Math.max(8, cardW*0.058);
-  const oscil=Math.round(cardH*0.55);
-  const rowGap=36;
+  let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
+  cardW=Math.max(96, Math.min(158, cardW));
+  // room for emoji + title + encounter + facilitator + app + stream pill
+  const cardH=Math.max(168, Math.round(cardW*1.22));
+  const topPad=44;          // clear space above cards for arrow heads
+  const bottomPad=28;
+  const oscil=Math.round(cardH*0.38);
+  const rowH=topPad + cardH + oscil + bottomPad;
+  const rowGap=56;          // breathing room for the wrap ribbon + arrow head
+  const fEmj=Math.round(cardW*0.17), fLbl=Math.max(11, cardW*0.09),
+        fEnc=Math.max(9.5, cardW*0.068), fMeta=Math.max(9, cardW*0.062),
+        fPill=Math.max(8.5, cardW*0.058);
 
   SCENARIOS.forEach((sc,si)=>{
     const rows=rowLens(sc);
@@ -185,8 +188,8 @@ function render(){
       for(let i=0;i<n;i++){
         const st=sc.steps[stepIdx++];
         const x=pad + i*(cardW+gap);
-        const y=yBase + 22 + (i%2===0?0:oscil) + (rand()*8-4);
-        const rot=(rand()*6-3).toFixed(2);
+        const y=yBase + topPad + (i%2===0?0:oscil) + (rand()*6-3);
+        const rot=(rand()*5-2.5).toFixed(2);
         pos.push({x,y,ri});
         const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
         const note=document.createElement('div'); note.className='note';
@@ -211,22 +214,22 @@ function render(){
       } else {
         // wrap: soft ribbon from end of row down to start of next
         const x1=a.x+cardW*0.78, y1=a.y+cardH-2;
-        const x2=b.x+cardW*0.22, y2=b.y+2;
+        const x2=b.x+cardW*0.28, y2=b.y-2;
         const rightOut=Math.min(W-10, a.x+cardW+52);
-        const midY=y1+(y2-y1)*0.52;
+        const midY=y1+(y2-y1)*0.48;
         const path=document.createElementNS('http://www.w3.org/2000/svg','path');
         path.setAttribute('d',
           `M ${x1} ${y1} `+
-          `C ${x1+34} ${y1+16}, ${rightOut} ${y1+26}, ${rightOut-6} ${midY} `+
-          `S ${x2+48} ${y2-28}, ${x2} ${y2-7}`);
+          `C ${x1+34} ${y1+18}, ${rightOut} ${y1+30}, ${rightOut-6} ${midY} `+
+          `S ${x2+52} ${y2-36}, ${x2} ${y2-12}`);
         path.setAttribute('fill','none');
         path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
         path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
         path.setAttribute('opacity','0.72');
         svg.appendChild(path);
-        const ah=9, axp=x2, ayp=y2-2;
+        const ah=10, axp=x2, ayp=y2-4;
         const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-        tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.75} ${ayp-ah}, ${axp+ah*0.75} ${ayp-ah}`);
+        tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.78} ${ayp-ah}, ${axp+ah*0.78} ${ayp-ah}`);
         tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
         svg.appendChild(tri);
       }
