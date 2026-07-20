@@ -31,7 +31,7 @@
        padding:14px 16px 8px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
   .scn h2{font-size:18px;margin:2px 0 1px}
   .scn .sub{color:var(--muted);font-size:12.5px;margin:0 0 2px}
-  .flow{position:relative;width:100%;overflow:hidden}
+  .flow{position:relative;width:100%;overflow-x:auto;overflow-y:hidden}
   .canvas{position:relative}
   svg.links{position:absolute;inset:0;overflow:visible;pointer-events:none}
   .note{position:absolute;border-radius:15px;padding:9px 10px;
@@ -52,7 +52,7 @@
 <body>
 <div class="wrap">
   <h1>🗺️ Patient Journey Board</h1>
-  <p class="tag">Cerner CIS · registration → discharge · seven realistic paths across the team's streams</p>
+  <p class="tag">Cerner CIS · registration → discharge · six realistic paths across the team's streams</p>
   <div class="legend" id="legend"></div>
   <div id="board"></div>
   <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
@@ -74,19 +74,17 @@ const SCENARIOS = [
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
           ['🩻','Chest X-ray','DI','DI','Department Order Entry'],
           ['🏡','Review & discharge','Outpatient','Reg']]},
-  {title:'ED Presentation → Inpatient Admission', sub:'Emergency converts to Inpatient',
+  {title:'ED Presentation → Day Surgery', sub:'Emergency converts to Inpatient, then elective day surgery',
    steps:[['🚑','Quick-register','Emergency','Reg','FirstNet'],
           ['🩺','Triage & assess','Emergency','ED','PowerChart'],
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
           ['🩻','CT scan','DI','DI','Department Order Entry'],
           ['🛏️','Admit (convert)','Emergency → Inpatient','ED','PowerChart'],
           ['🏥','Inpatient care','Inpatient','Nursing','PowerChart'],
-          ['🏡','Discharge','Inpatient','Nursing','PowerChart']]},
-  {title:'Elective Day Surgery', sub:'Pre-admit Outpatient + Day Surgery',
-   steps:[['📅','Pre-admit clinic','Outpatient · Single','Reg','SchAppBook'],
+          ['📅','Pre-admit clinic','Outpatient · Single','Reg','SchAppBook'],
           ['🩸','Pre-op labs','Lab','Lab','Department Order Entry'],
           ['🩻','Pre-op imaging','DI','DI','Department Order Entry'],
-          ['🔪','Pre-op / procedure','Day Surgery','Nursing','PowerChart','Rijo'],
+          ['🔪','IntraOp','Day Surgery','Nursing','PowerChart','Rijo'],
           ['😴','PACU recovery','Day Surgery','Nursing','PowerChart','Rijo'],
           ['🏡','Discharge home','Day Surgery','Reg','PM Office']]},
   {title:'Recurring Infusion Therapy', sub:'Outpatient in a Bed · Recurring',
@@ -119,7 +117,6 @@ const SCENARIOS = [
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
 ];
 function rng(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
-const MAXN = Math.max(...SCENARIOS.map(s=>s.steps.length));
 
 const leg=document.getElementById('legend');
 for(const k in STREAM){const s=STREAM[k];
@@ -131,25 +128,27 @@ const board=document.getElementById('board');
 function render(){
   board.innerHTML='';
   const pad=6;
-  const avail=Math.max(360, board.clientWidth - 34); // fit inside .scn padding, no scroll
-  // one card width shared by all lanes (sized to the busiest lane) so nothing overflows
-  let cardW=(avail - 2*pad - (MAXN-1)*Math.max(10, avail*0.02)) / MAXN;
-  cardW=Math.max(78, Math.min(150, cardW));
-  const cardH=Math.round(cardW*0.98);
-  const H=Math.round(cardH + cardH*0.62 + 44);
-  const fEmj=Math.round(cardW*0.18), fLbl=Math.max(10, cardW*0.088),
-        fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
-        fPill=Math.max(8, cardW*0.058);
-  const oscil=Math.round(cardH*0.55);
+  const avail=Math.max(360, board.clientWidth - 34);
 
   SCENARIOS.forEach((sc,si)=>{
+    const n=sc.steps.length;
+    // size cards for ~7 steps in view; longer lanes scroll horizontally
+    const fitN=Math.min(n, 7);
+    let cardW=(avail - 2*pad - (fitN-1)*Math.max(10, avail*0.02)) / fitN;
+    cardW=Math.max(90, Math.min(150, cardW));
+    const gap=Math.max(14, Math.min(28, cardW*0.18));
+    const cardH=Math.round(cardW*0.98);
+    const H=Math.round(cardH + cardH*0.62 + 44);
+    const fEmj=Math.round(cardW*0.18), fLbl=Math.max(10, cardW*0.088),
+          fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
+          fPill=Math.max(8, cardW*0.058);
+    const oscil=Math.round(cardH*0.55);
+    const W=2*pad + n*cardW + (n-1)*gap;
+
     const sec=document.createElement('div'); sec.className='scn';
     sec.innerHTML=`<h2>${si+1}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
     const flow=document.createElement('div'); flow.className='flow';
     const canvas=document.createElement('div'); canvas.className='canvas';
-    const n=sc.steps.length;
-    const W=avail;
-    const gap=(W - 2*pad - n*cardW)/(n-1);
     canvas.style.width=W+'px'; canvas.style.height=H+'px';
     const rand=rng(si*97+13);
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
