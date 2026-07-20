@@ -161,7 +161,7 @@ function render(){
         fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
         fPill=Math.max(8, cardW*0.058);
   const oscil=Math.round(cardH*0.55);
-  const rowGap=18;
+  const rowGap=36;
 
   SCENARIOS.forEach((sc,si)=>{
     const rows=rowLens(sc);
@@ -209,19 +209,24 @@ function render(){
       if(a.ri===b.ri){
         drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand);
       } else {
-        // wrap: drop from end of row down to start of next row
-        const x1=a.x+cardW/2, y1=a.y+cardH;
-        const x2=b.x+cardW/2, y2=b.y;
-        const midY=(y1+y2)/2;
+        // wrap: soft ribbon from end of row down to start of next
+        const x1=a.x+cardW*0.78, y1=a.y+cardH-2;
+        const x2=b.x+cardW*0.22, y2=b.y+2;
+        const rightOut=Math.min(W-10, a.x+cardW+52);
+        const midY=y1+(y2-y1)*0.52;
         const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-        path.setAttribute('d',`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2-8}`);
+        path.setAttribute('d',
+          `M ${x1} ${y1} `+
+          `C ${x1+34} ${y1+16}, ${rightOut} ${y1+26}, ${rightOut-6} ${midY} `+
+          `S ${x2+48} ${y2-28}, ${x2} ${y2-7}`);
         path.setAttribute('fill','none');
         path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
-        path.setAttribute('stroke-linecap','round'); path.setAttribute('opacity','0.72');
+        path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
+        path.setAttribute('opacity','0.72');
         svg.appendChild(path);
-        const ah=8, axp=x2, ayp=y2-3;
+        const ah=9, axp=x2, ayp=y2-2;
         const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-        tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.7} ${ayp-ah}, ${axp+ah*0.7} ${ayp-ah}`);
+        tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.75} ${ayp-ah}, ${axp+ah*0.75} ${ayp-ah}`);
         tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
         svg.appendChild(tri);
       }
