@@ -31,7 +31,7 @@
        padding:14px 16px 8px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
   .scn h2{font-size:18px;margin:2px 0 1px}
   .scn .sub{color:var(--muted);font-size:12.5px;margin:0 0 2px}
-  .flow{position:relative;width:100%;overflow-x:auto;overflow-y:hidden}
+  .flow{position:relative;width:100%;overflow:hidden}
   .canvas{position:relative}
   svg.links{position:absolute;inset:0;overflow:visible;pointer-events:none}
   .note{position:absolute;border-radius:15px;padding:9px 10px;
@@ -75,6 +75,7 @@ const SCENARIOS = [
           ['🩻','Chest X-ray','DI','DI','Department Order Entry'],
           ['🏡','Review & discharge','Outpatient','Reg']]},
   {title:'ED Presentation → Day Surgery', sub:'Emergency converts to Inpatient, then elective day surgery',
+   wrapAfter:6,
    steps:[['🚑','Quick-register','Emergency','Reg','FirstNet'],
           ['🩺','Triage & assess','Emergency','ED','PowerChart'],
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
@@ -117,6 +118,12 @@ const SCENARIOS = [
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
 ];
 function rng(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
+function rowLens(sc){
+  if(!sc.wrapAfter) return [sc.steps.length];
+  const rows=[]; for(let i=0;i<sc.steps.length;i+=sc.wrapAfter) rows.push(Math.min(sc.wrapAfter, sc.steps.length-i));
+  return rows;
+}
+const MAXN = Math.max(...SCENARIOS.flatMap(rowLens));
 
 const leg=document.getElementById('legend');
 for(const k in STREAM){const s=STREAM[k];
@@ -125,26 +132,42 @@ for(const k in STREAM){const s=STREAM[k];
 
 const board=document.getElementById('board');
 
+function drawArrow(svg, x1,y1,x2,y2, col, rand){
+  const dx=x2-x1, dy=y2-y1;
+  const wob=(rand()*40-20);
+  const cx1=x1+dx*0.42, cy1=y1+(dy?dy*0.2:0)+wob, cx2=x2-dx*0.42, cy2=y2-(dy?dy*0.2:0)-wob;
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2-8} ${y2}`);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
+  path.setAttribute('stroke-linecap','round'); path.setAttribute('opacity','0.72');
+  svg.appendChild(path);
+  const ang=Math.atan2(y2-cy2,(x2-8)-cx2), ah=8, axp=x2-3, ayp=y2;
+  const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*Math.cos(ang-0.5)} ${ayp-ah*Math.sin(ang-0.5)}, ${axp-ah*Math.cos(ang+0.5)} ${ayp-ah*Math.sin(ang+0.5)}`);
+  tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
+  svg.appendChild(tri);
+}
+
 function render(){
   board.innerHTML='';
   const pad=6;
   const avail=Math.max(360, board.clientWidth - 34);
+  let cardW=(avail - 2*pad - (MAXN-1)*Math.max(10, avail*0.02)) / MAXN;
+  cardW=Math.max(78, Math.min(150, cardW));
+  const cardH=Math.round(cardW*0.98);
+  const rowH=Math.round(cardH + cardH*0.62 + 44);
+  const fEmj=Math.round(cardW*0.18), fLbl=Math.max(10, cardW*0.088),
+        fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
+        fPill=Math.max(8, cardW*0.058);
+  const oscil=Math.round(cardH*0.55);
+  const rowGap=18;
 
   SCENARIOS.forEach((sc,si)=>{
-    const n=sc.steps.length;
-    // size cards for ~7 steps in view; longer lanes scroll horizontally
-    const fitN=Math.min(n, 7);
-    let cardW=(avail - 2*pad - (fitN-1)*Math.max(10, avail*0.02)) / fitN;
-    cardW=Math.max(90, Math.min(150, cardW));
-    const gap=Math.max(14, Math.min(28, cardW*0.18));
-    const cardH=Math.round(cardW*0.98);
-    const H=Math.round(cardH + cardH*0.62 + 44);
-    const fEmj=Math.round(cardW*0.18), fLbl=Math.max(10, cardW*0.088),
-          fEnc=Math.max(8.5, cardW*0.066), fMeta=Math.max(8, cardW*0.058),
-          fPill=Math.max(8, cardW*0.058);
-    const oscil=Math.round(cardH*0.55);
-    const W=2*pad + n*cardW + (n-1)*gap;
-
+    const rows=rowLens(sc);
+    const nRows=rows.length;
+    const W=avail;
+    const H=nRows*rowH + (nRows-1)*rowGap;
     const sec=document.createElement('div'); sec.className='scn';
     sec.innerHTML=`<h2>${si+1}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
     const flow=document.createElement('div'); flow.className='flow';
@@ -155,42 +178,53 @@ function render(){
     svg.setAttribute('class','links'); svg.setAttribute('width',W); svg.setAttribute('height',H);
     canvas.appendChild(svg);
     const pos=[];
-    sc.steps.forEach((st,i)=>{
-      const x=pad + i*(cardW+gap);
-      const y=22 + (i%2===0?0:oscil) + (rand()*8-4);
-      const rot=(rand()*6-3).toFixed(2);
-      pos.push({x,y});
-      const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
-      const note=document.createElement('div'); note.className='note';
-      note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
-      note.style.minHeight=cardH+'px'; note.style.background=s.bg;
-      note.style.transform=`rotate(${rot}deg)`;
-      note.innerHTML=
-        `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
-        `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
-        `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
-        `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
-        (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
-        `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
-      canvas.appendChild(note);
+    let stepIdx=0;
+    rows.forEach((n,ri)=>{
+      const gap=n>1?(W - 2*pad - n*cardW)/(n-1):0;
+      const yBase=ri*(rowH+rowGap);
+      for(let i=0;i<n;i++){
+        const st=sc.steps[stepIdx++];
+        const x=pad + i*(cardW+gap);
+        const y=yBase + 22 + (i%2===0?0:oscil) + (rand()*8-4);
+        const rot=(rand()*6-3).toFixed(2);
+        pos.push({x,y,ri});
+        const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
+        const note=document.createElement('div'); note.className='note';
+        note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
+        note.style.minHeight=cardH+'px'; note.style.background=s.bg;
+        note.style.transform=`rotate(${rot}deg)`;
+        note.innerHTML=
+          `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
+          `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
+          `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
+          `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
+          (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
+          `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
+        canvas.appendChild(note);
+      }
     });
-    for(let i=0;i<n-1;i++){
+    for(let i=0;i<pos.length-1;i++){
       const a=pos[i], b=pos[i+1];
-      const x1=a.x+cardW, y1=a.y+cardH/2, x2=b.x, y2=b.y+cardH/2, dx=x2-x1;
-      const wob=(rand()*40-20);
-      const cx1=x1+dx*0.42, cy1=y1+wob, cx2=x2-dx*0.42, cy2=y2-wob;
-      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('d',`M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2-8} ${y2}`);
-      path.setAttribute('fill','none');
       const col=STREAM[sc.steps[i+1][3]].ac;
-      path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
-      path.setAttribute('stroke-linecap','round'); path.setAttribute('opacity','0.72');
-      svg.appendChild(path);
-      const ang=Math.atan2(y2-cy2,(x2-8)-cx2), ah=8, axp=x2-3, ayp=y2;
-      const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-      tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*Math.cos(ang-0.5)} ${ayp-ah*Math.sin(ang-0.5)}, ${axp-ah*Math.cos(ang+0.5)} ${ayp-ah*Math.sin(ang+0.5)}`);
-      tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
-      svg.appendChild(tri);
+      if(a.ri===b.ri){
+        drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand);
+      } else {
+        // wrap: drop from end of row down to start of next row
+        const x1=a.x+cardW/2, y1=a.y+cardH;
+        const x2=b.x+cardW/2, y2=b.y;
+        const midY=(y1+y2)/2;
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d',`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2-8}`);
+        path.setAttribute('fill','none');
+        path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
+        path.setAttribute('stroke-linecap','round'); path.setAttribute('opacity','0.72');
+        svg.appendChild(path);
+        const ah=8, axp=x2, ayp=y2-3;
+        const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+        tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.7} ${ayp-ah}, ${axp+ah*0.7} ${ayp-ah}`);
+        tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
+        svg.appendChild(tri);
+      }
     }
     flow.appendChild(canvas); sec.appendChild(flow); board.appendChild(sec);
   });
