@@ -100,6 +100,19 @@
   .arrow-sep{color:#94a3b8;font-weight:700}
   .history-box{font-size:12.5px;color:#334155;line-height:1.5;max-height:160px;overflow:auto;
                background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px}
+  .modal-back{
+    position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;
+    justify-content:center;z-index:50;padding:20px;
+  }
+  .modal-back.open{display:flex}
+  .modal{
+    background:#fff;border-radius:18px;padding:18px 20px;max-width:420px;width:100%;
+    box-shadow:0 20px 50px rgba(15,23,42,.25);
+  }
+  .modal h3{margin:0 0 6px;font-size:17px}
+  .modal p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.45}
+  .modal .field{margin-bottom:10px}
+  .modal .btn-row{margin-top:14px;justify-content:flex-end}
 </style>
 </head>
 <body>
@@ -134,7 +147,7 @@
 
     <div class="panel">
       <h2>Scenario grouping</h2>
-      <p class="help">Pick a scenario. Groups default to the distinct streams in that path (Reg, ED, Lab…). Change the count anytime — people redistribute automatically. Confirm locks roles into history so the next scenario avoids repeats.</p>
+      <p class="help">Pick a scenario. Groups default to the distinct streams in that path (Reg, ED, Lab…). Raising the count adds empty groups; lowering it asks which two groups to combine. Confirm locks roles into history so the next scenario avoids repeats.</p>
       <div class="controls">
         <div class="field" style="min-width:280px;flex:1">
           <label for="scenarioPick">Scenario</label>
@@ -166,6 +179,26 @@
     </div>
   </div>
 </div>
+
+<div class="modal-back" id="mergeModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-labelledby="mergeTitle">
+    <h3 id="mergeTitle">Combine two groups</h3>
+    <p id="mergeHelp">Choose which two groups to merge into one. Members and streams will be combined.</p>
+    <div class="field">
+      <label for="mergeA">First group</label>
+      <select id="mergeA"></select>
+    </div>
+    <div class="field">
+      <label for="mergeB">Second group</label>
+      <select id="mergeB"></select>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="mergeCancel" type="button">Cancel</button>
+      <button class="btn" id="mergeConfirm" type="button">Combine</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const STREAM = {
   Reg:{bg:'var(--reg-bg)',ac:'#1D4ED8',name:'Registration & Scheduling',facilitator:'Boon'},
@@ -566,6 +599,116 @@ function syncSessionUI(store, msg){
   if(msg) sessionStatus.textContent=msg;
 }
 
+function flushGroupEdits(store){
+  groupsEl.querySelectorAll('textarea[data-members]').forEach(ta=>{
+    const i=+ta.dataset.members;
+    if(store.groups[i]) store.groups[i].members=parseRoster(ta.value);
+  });
+  groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
+    const i=+inp.dataset.i;
+    if(store.groups[i]) store.groups[i].title=inp.value.trim()||store.groups[i].title;
+  });
+}
+
+function mergeTwoGroups(groups, a, b){
+  const i=Math.min(a,b), j=Math.max(a,b);
+  const g1=groups[i], g2=groups[j];
+  const streams=[...g1.streams];
+  g2.streams.forEach(st=>{ if(!streams.includes(st)) streams.push(st); });
+  const members=[...g1.members];
+  g2.members.forEach(n=>{ if(!members.some(m=>m.toLowerCase()===n.toLowerCase())) members.push(n); });
+  const fac=streams.map(s=>STREAM[s].facilitator).filter((v,idx,arr)=>arr.indexOf(v)===idx).join(', ')||'—';
+  const label=streams.length?streams.join(' + '):'Float / observe';
+  const merged={
+    title:`Group ${i+1} — ${label}`,
+    streams,
+    facilitator:fac,
+    members
+  };
+  const next=groups.filter((_,idx)=>idx!==j);
+  next[i]=merged;
+  // renumber titles only if they still look auto-generated? keep custom titles for others
+  return next.map((g,idx)=>{
+    const looksAuto=/^Group \d+/.test(g.title);
+    if(looksAuto){
+      const lab=g.streams.length?g.streams.join(' + '):'Float / observe';
+      return {...g, title:`Group ${idx+1} — ${lab}`,
+        facilitator:g.streams.map(s=>STREAM[s].facilitator).filter((v,ix,a)=>a.indexOf(v)===ix).join(', ')||'—'};
+    }
+    return g;
+  });
+}
+
+function addEmptyGroups(groups, count){
+  const next=[...groups];
+  while(next.length<count){
+    const i=next.length;
+    next.push({title:`Group ${i+1} — Float / observe`, streams:[], facilitator:'—', members:[]});
+  }
+  return next;
+}
+
+const mergeModal=document.getElementById('mergeModal');
+const mergeA=document.getElementById('mergeA');
+const mergeB=document.getElementById('mergeB');
+const mergeHelp=document.getElementById('mergeHelp');
+let mergeResolver=null;
+
+function openMergeDialog(groups, remaining){
+  return new Promise(resolve=>{
+    mergeResolver=resolve;
+    mergeA.innerHTML='';
+    mergeB.innerHTML='';
+    groups.forEach((g,i)=>{
+      const o1=document.createElement('option'); o1.value=i; o1.textContent=g.title;
+      const o2=document.createElement('option'); o2.value=i; o2.textContent=g.title;
+      mergeA.appendChild(o1); mergeB.appendChild(o2);
+    });
+    mergeA.value='0';
+    mergeB.value=groups.length>1?'1':'0';
+    mergeHelp.textContent=remaining>1
+      ?`Choose which two groups to merge (${remaining} merges left to reach the target count).`
+      :'Choose which two groups to merge into one. Members and streams will be combined.';
+    mergeModal.classList.add('open');
+    mergeModal.setAttribute('aria-hidden','false');
+  });
+}
+function closeMergeDialog(result){
+  mergeModal.classList.remove('open');
+  mergeModal.setAttribute('aria-hidden','true');
+  if(mergeResolver){ const r=mergeResolver; mergeResolver=null; r(result); }
+}
+document.getElementById('mergeCancel').addEventListener('click',()=>closeMergeDialog(null));
+document.getElementById('mergeConfirm').addEventListener('click',()=>{
+  const a=+mergeA.value, b=+mergeB.value;
+  if(a===b){ sessionStatus.textContent='Pick two different groups to combine.'; return; }
+  closeMergeDialog({a,b});
+});
+mergeModal.addEventListener('click',e=>{ if(e.target===mergeModal) closeMergeDialog(null); });
+
+async function reduceGroupsByMerging(targetCount){
+  const store=getStore();
+  flushGroupEdits(store);
+  let groups=[...store.groups];
+  const start=groups.length;
+  if(targetCount>=start) return false;
+  let remaining=start-targetCount;
+  while(groups.length>targetCount){
+    const pick=await openMergeDialog(groups, remaining);
+    if(!pick){
+      groupCountEl.value=String(store.groups.length);
+      sessionStatus.textContent='Merge cancelled — group count unchanged.';
+      return false;
+    }
+    groups=mergeTwoGroups(groups, pick.a, pick.b);
+    remaining--;
+  }
+  store.groups=groups;
+  saveStore(store);
+  syncSessionUI(store, `Combined groups down to ${groups.length} (from ${start}).`);
+  return true;
+}
+
 function autoDistribute(opts={}){
   const store=getStore();
   store.participants=parseRoster(rosterEl.value);
@@ -607,21 +750,28 @@ scenarioPick.addEventListener('change',()=>{
   autoDistribute({fromScenario:true});
 });
 
-groupCountEl.addEventListener('change',()=>{
-  autoDistribute({keepCount:true});
+groupCountEl.addEventListener('change', async ()=>{
+  const store=getStore();
+  flushGroupEdits(store);
+  saveStore(store);
+  const current=store.groups.length;
+  let n=+groupCountEl.value;
+  n=Math.max(1, Math.min(20, n||1));
+  groupCountEl.value=String(n);
+  if(n===current) return;
+  if(n<current){
+    await reduceGroupsByMerging(n);
+    return;
+  }
+  // increase: add empty float groups, keep existing people where they are
+  store.groups=addEmptyGroups(store.groups, n);
+  saveStore(store);
+  syncSessionUI(store, `Added empty group(s) — now ${n} total. Move people manually or hit Auto-distribute.`);
 });
 
 document.getElementById('confirmRoles').addEventListener('click',()=>{
   const store=getStore();
-  // pull latest edits from textareas
-  groupsEl.querySelectorAll('textarea[data-members]').forEach(ta=>{
-    const i=+ta.dataset.members;
-    if(store.groups[i]) store.groups[i].members=parseRoster(ta.value);
-  });
-  groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
-    const i=+inp.dataset.i;
-    if(store.groups[i]) store.groups[i].title=inp.value.trim()||store.groups[i].title;
-  });
+  flushGroupEdits(store);
   store.groups.forEach(g=>{
     g.members.forEach(name=>{
       if(!store.roleHistory[name]) store.roleHistory[name]=[];
