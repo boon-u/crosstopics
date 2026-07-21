@@ -667,25 +667,38 @@ function streamToGroupIndex(groups, stream){
 }
 
 function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
-  // Leave from bottom-center of last card, soft S-curve into top of next-row first card
-  const x1=a.x+cardW*0.55, y1=a.y+cardH;
-  const x2=b.x+cardW*0.45, y2=b.y-2;
-  const drop=Math.max(28, (y2-y1)*0.42);
-  const rightOut=Math.min(W-14, Math.max(x1, x2)+Math.min(64, cardW*0.55));
+  // Smooth U/S from end of one row into the start of the next (G1-continuous, no kink)
+  const x1=a.x+cardW*0.62, y1=a.y+cardH;
+  const x2=b.x+cardW*0.38, y2=b.y;
+  const span=Math.max(40, y2-y1);
+  const midY=y1+span*0.52;
+  // Side bulge so the curve breathes, but tangents stay continuous at the bottom
+  const bulge=Math.min(56, Math.max(28, Math.abs(x1-x2)*0.08));
+  const cx1=Math.min(W-16, x1+bulge);
+  const cx2=Math.min(W-16, x2+bulge);
+  const endY=y2-14;
   const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  // Two cubics meeting at (xm, midY) with shared horizontal tangent → smooth edge
+  const xm=(x1+x2)/2;
   path.setAttribute('d',
     `M ${x1} ${y1} `+
-    `C ${x1+18} ${y1+drop*0.55}, ${rightOut} ${y1+drop*0.75}, ${rightOut-10} ${y1+drop} `+
-    `S ${x2+36} ${y2-drop*0.85}, ${x2} ${y2-14}`);
+    `C ${cx1} ${y1+span*0.22}, ${xm+(x1-xm)*0.15} ${midY}, ${xm} ${midY} `+
+    `C ${xm+(x2-xm)*0.15} ${midY}, ${cx2} ${endY-span*0.18}, ${x2} ${endY}`);
   path.setAttribute('fill','none');
-  path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.6');
+  path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.5');
   path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
-  path.setAttribute('opacity','0.8');
+  path.setAttribute('opacity','0.78');
   svg.appendChild(path);
-  const ah=10, axp=x2, ayp=y2-5;
+  // Arrowhead follows final tangent (control → tip)
+  const c2x=cx2, c2y=endY-span*0.18;
+  const ang=Math.atan2(endY-c2y, x2-c2x);
+  const ah=10, tipX=x2, tipY=endY+2;
   const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-  tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.78} ${ayp-ah}, ${axp+ah*0.78} ${ayp-ah}`);
-  tri.setAttribute('fill',col); tri.setAttribute('opacity','0.9');
+  tri.setAttribute('points',
+    `${tipX} ${tipY}, `+
+    `${tipX-ah*Math.cos(ang-0.5)} ${tipY-ah*Math.sin(ang-0.5)}, `+
+    `${tipX-ah*Math.cos(ang+0.5)} ${tipY-ah*Math.sin(ang+0.5)}`);
+  tri.setAttribute('fill',col); tri.setAttribute('opacity','0.88');
   svg.appendChild(tri);
 }
 
@@ -701,7 +714,7 @@ function renderScenarioInto(target, sc, si, opts={}){
   const bottomPad=28;
   const oscil=Math.round(cardH*0.38);
   const rowH=topPad + cardH + oscil + bottomPad;
-  const rowGap=sc.wrapAfter?64:56;
+  const rowGap=sc.wrapAfter?72:56;
   const fEmj=Math.round(cardW*0.17), fLbl=Math.max(11, cardW*0.09),
         fEnc=Math.max(9.5, cardW*0.068), fMeta=Math.max(9, cardW*0.062),
         fPill=Math.max(8.5, cardW*0.058);
