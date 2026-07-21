@@ -417,7 +417,7 @@ async function initFirebasePersistence(){
     }catch(authErr){
       console.warn('Anonymous auth unavailable, continuing without Auth:', authErr);
     }
-    const path=window.FIREBASE_BOARD_PATH||{collection:'boards',doc:'crosstopics'};
+    const path=window.FIREBASE_BOARD_PATH||{collection:'crosstopics',doc:'session'};
     boardRef=firestoreDb.collection(path.collection).doc(path.doc);
     const snap=await boardRef.get();
     const local=loadLocalStore();

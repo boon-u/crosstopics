@@ -10,4 +10,5 @@ window.FIREBASE_CONFIG = {
 };
 
 // Shared classroom board document path in Firestore
-window.FIREBASE_BOARD_PATH = { collection: "boards", doc: "crosstopics" };
+// Collection is separate from Boonverse (skills / logs)
+window.FIREBASE_BOARD_PATH = { collection: "crosstopics", doc: "session" };

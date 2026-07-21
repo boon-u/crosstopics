@@ -1,9 +1,16 @@
 rules_version = '2';
+// Boonverse + CrossTopics Firestore rules — personal / private deploy.
+// WARNING: open read/write. Lock down with Firebase Auth before sharing publicly.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Open for this classroom board tool.
-    // Firebase Console → Firestore → Rules → Publish
-    match /{document=**} {
+    match /skills/{skillId} {
+      allow read, write: if true;
+    }
+    match /logs/{logId} {
+      allow read, write: if true;
+    }
+    // Patient Journey Board (Session Groups)
+    match /crosstopics/{docId} {
       allow read, write: if true;
     }
   }
