@@ -23,6 +23,15 @@
   .wrap{max-width:1360px;margin:0 auto}
   h1{font-size:32px;margin:0 0 4px;letter-spacing:-.5px}
   .tag{color:var(--muted);font-size:15px;margin:0 0 18px}
+  .tabs{display:flex;gap:8px;margin:0 0 20px;flex-wrap:wrap}
+  .tab{
+    border:1px solid #e2e8f0;background:#fff;color:#334155;font-weight:700;font-size:13.5px;
+    padding:8px 16px;border-radius:999px;cursor:pointer;
+    box-shadow:0 1px 2px rgba(15,23,42,.05);
+  }
+  .tab.active{background:#0f172a;color:#fff;border-color:#0f172a}
+  .view{display:none}
+  .view.active{display:block}
   .legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 22px}
   .lg{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:#334155;
       background:#fff;border:1px solid #e2e8f0;border-radius:999px;padding:5px 12px 5px 8px;
@@ -48,15 +57,114 @@
   .note .pill{align-self:flex-start;margin-top:auto;font-weight:800;
               letter-spacing:.3px;color:#fff;border-radius:999px;padding:3px 8px}
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
+
+  /* Session groups */
+  .panel{background:#ffffffcc;border:1px solid #eef2f7;border-radius:20px;
+         padding:16px 18px;margin:0 0 16px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
+  .panel h2{font-size:17px;margin:0 0 6px}
+  .panel p.help{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.45}
+  .controls{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:end;margin:0 0 14px}
+  .field{display:flex;flex-direction:column;gap:5px;min-width:140px}
+  .field label{font-size:12px;font-weight:700;color:#475569}
+  .field input,.field select,.field textarea{
+    border:1px solid #dbe2ea;border-radius:10px;padding:8px 10px;font:inherit;color:var(--ink);
+    background:#fff;
+  }
+  .field textarea{min-height:120px;resize:vertical;line-height:1.4}
+  .btn{
+    border:0;border-radius:10px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer;
+    background:#0f172a;color:#fff;
+  }
+  .btn.secondary{background:#fff;color:#0f172a;border:1px solid #dbe2ea}
+  .btn.danger{background:#fff;color:#b91c1c;border:1px solid #fecaca}
+  .btn-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .status{font-size:12.5px;color:var(--muted);margin:4px 0 0}
+  .groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .group-card{
+    border:1px solid #e2e8f0;border-radius:16px;padding:12px;background:#fff;
+    display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 12px rgba(15,23,42,.04);
+  }
+  .group-card .gtitle{font-weight:800;border:0;border-bottom:1px dashed #e2e8f0;padding:4px 2px;
+                      font-size:14px;width:100%;background:transparent}
+  .group-card .streams{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{font-size:11px;font-weight:800;color:#fff;border-radius:999px;padding:3px 8px}
+  .group-card .fac{font-size:12px;color:var(--muted)}
+  .group-card textarea{min-height:90px;font-size:13px}
+  .handoff{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .hop{
+    display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;
+    border-radius:12px;padding:8px 10px;font-size:12.5px;max-width:220px;
+  }
+  .hop .n{font-weight:800}
+  .hop .g{font-size:11px;font-weight:700;color:#475569}
+  .arrow-sep{color:#94a3b8;font-weight:700}
+  .history-box{font-size:12.5px;color:#334155;line-height:1.5;max-height:160px;overflow:auto;
+               background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🗺️ Patient Journey Board</h1>
   <p class="tag">Cerner CIS · registration → discharge · seven realistic paths across the team's streams</p>
-  <div class="legend" id="legend"></div>
-  <div id="board"></div>
-  <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
+  <div class="tabs">
+    <button class="tab active" data-view="board">Journey Board</button>
+    <button class="tab" data-view="session">Session Groups</button>
+  </div>
+
+  <div class="view active" id="view-board">
+    <div class="legend" id="legend"></div>
+    <div id="board"></div>
+    <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
+  </div>
+
+  <div class="view" id="view-session">
+    <div class="panel">
+      <h2>Class roster</h2>
+      <p class="help">One participant name per line. Saved in this browser so you can reuse it across scenarios.</p>
+      <div class="field">
+        <label for="roster">Participants</label>
+        <textarea id="roster" placeholder="Alex&#10;Jordan&#10;Sam&#10;…"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn" id="saveRoster">Save roster</button>
+        <button class="btn secondary" id="clearHistory">Reset role history</button>
+      </div>
+      <p class="status" id="rosterStatus"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Scenario grouping</h2>
+      <p class="help">Pick a scenario. Groups default to the distinct streams in that path (Reg, ED, Lab…). Change the count anytime — people redistribute automatically. Confirm locks roles into history so the next scenario avoids repeats.</p>
+      <div class="controls">
+        <div class="field" style="min-width:280px;flex:1">
+          <label for="scenarioPick">Scenario</label>
+          <select id="scenarioPick"></select>
+        </div>
+        <div class="field" style="min-width:110px">
+          <label for="groupCount"># of groups</label>
+          <input id="groupCount" type="number" min="1" max="20" value="4">
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="redistribute">Auto-distribute</button>
+          <button class="btn secondary" id="confirmRoles">Confirm roles for history</button>
+        </div>
+      </div>
+      <p class="status" id="sessionStatus"></p>
+      <div class="groups" id="groups"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Workflow hand-offs</h2>
+      <p class="help">Follow the scenario left to right. The same group comes back whenever their stream appears again.</p>
+      <div class="handoff" id="handoff"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Role history</h2>
+      <p class="help">Streams each person has already practiced. Used to keep Reg people from being Reg again next scenario.</p>
+      <div class="history-box" id="historyBox"></div>
+    </div>
+  </div>
 </div>
 <script>
 const STREAM = {
@@ -122,6 +230,118 @@ const SCENARIOS = [
           ['🛌','Post-op inpatient care','Inpatient','Peri'],
           ['🏡','Discharge','Inpatient','Nursing','','Rijo']]},
 ];
+
+const STORE_KEY='pjBoard.session.v1';
+
+function loadStore(){
+  try{return JSON.parse(localStorage.getItem(STORE_KEY)||'{}');}catch(e){return {};}
+}
+function saveStore(data){
+  localStorage.setItem(STORE_KEY, JSON.stringify(data));
+}
+function getStore(){
+  const s=loadStore();
+  if(!Array.isArray(s.participants)) s.participants=[];
+  if(!s.roleHistory||typeof s.roleHistory!=='object') s.roleHistory={};
+  if(typeof s.scenarioIndex!=='number') s.scenarioIndex=0;
+  if(!Array.isArray(s.groups)) s.groups=[];
+  return s;
+}
+
+function parseRoster(text){
+  return text.split(/\n+/).map(x=>x.trim()).filter(Boolean)
+    .filter((v,i,a)=>a.findIndex(t=>t.toLowerCase()===v.toLowerCase())===i);
+}
+
+function uniqueStreams(sc){
+  const out=[]; const seen=new Set();
+  sc.steps.forEach(st=>{const k=st[3]; if(!seen.has(k)){seen.add(k); out.push(k);}});
+  return out;
+}
+
+function mapStreamsToGroups(streams, nGroups){
+  const n=Math.max(1, Math.min(20, nGroups|0));
+  const groups=Array.from({length:n},()=>({streams:[]}));
+  if(!streams.length){
+    groups.forEach((g,i)=>{g.title=`Group ${i+1}`; g.members=[];});
+    return groups;
+  }
+  if(n<=streams.length){
+    streams.forEach((st,i)=>groups[i%n].streams.push(st));
+  } else {
+    streams.forEach((st,i)=>groups[i].streams.push(st));
+  }
+  return groups.map((g,i)=>{
+    const primary=g.streams[0];
+    const fac=primary?STREAM[primary].facilitator:'—';
+    const label=g.streams.length
+      ? g.streams.map(s=>s).join(' + ')
+      : 'Float / observe';
+    return {
+      title: g.streams.length?`Group ${i+1} — ${label}`:`Group ${i+1} — Float`,
+      streams:g.streams,
+      facilitator: g.streams.map(s=>STREAM[s].facilitator).filter((v,idx,a)=>a.indexOf(v)===idx).join(', ')||'—',
+      members:[]
+    };
+  });
+}
+
+function scoreForGroup(name, group, history){
+  const done=history[name]||[];
+  if(!group.streams.length) return done.length; // float groups: prefer people who've done more already
+  let repeats=0;
+  group.streams.forEach(st=>{if(done.includes(st)) repeats++;});
+  // heavy penalty for repeating any stream in this group; prefer people with fewer total roles
+  return repeats*1000 + done.length*10 + group.members.length;
+}
+
+function distributeParticipants(participants, groups, history){
+  const gs=groups.map(g=>({...g, members:[]}));
+  if(!participants.length||!gs.length) return gs;
+
+  // People with fewer prior roles first; stable by name
+  const people=[...participants].sort((a,b)=>{
+    const da=(history[a]||[]).length, db=(history[b]||[]).length;
+    if(da!==db) return da-db;
+    return a.localeCompare(b);
+  });
+
+  people.forEach(name=>{
+    let best=0, bestScore=Infinity;
+    gs.forEach((g,i)=>{
+      const sc=scoreForGroup(name,g,history);
+      if(sc<bestScore || (sc===bestScore && g.members.length<gs[best].members.length)){
+        bestScore=sc; best=i;
+      }
+    });
+    gs[best].members.push(name);
+  });
+  return gs;
+}
+
+function buildGroupsForScenario(scenarioIndex, groupCount, participants, history, keepTitles){
+  const sc=SCENARIOS[scenarioIndex];
+  const streams=uniqueStreams(sc);
+  const base=mapStreamsToGroups(streams, groupCount);
+  const filled=distributeParticipants(participants, base, history);
+  if(keepTitles&&keepTitles.length===filled.length){
+    filled.forEach((g,i)=>{ if(keepTitles[i]) g.title=keepTitles[i]; });
+  }
+  return filled;
+}
+
+/* ---- Tabs ---- */
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view==='board') render();
+  });
+});
+
+/* ---- Journey board (unchanged logic) ---- */
 function rng(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
 function rowLens(sc){
   if(!sc.wrapAfter) return [sc.steps.length];
@@ -160,13 +380,12 @@ function render(){
   const avail=Math.max(360, board.clientWidth - 34);
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
-  // room for emoji + title + encounter + facilitator + app + stream pill
   const cardH=Math.max(168, Math.round(cardW*1.22));
-  const topPad=44;          // clear space above cards for arrow heads
+  const topPad=44;
   const bottomPad=28;
   const oscil=Math.round(cardH*0.38);
   const rowH=topPad + cardH + oscil + bottomPad;
-  const rowGap=56;          // breathing room for the wrap ribbon + arrow head
+  const rowGap=56;
   const fEmj=Math.round(cardW*0.17), fLbl=Math.max(11, cardW*0.09),
         fEnc=Math.max(9.5, cardW*0.068), fMeta=Math.max(9, cardW*0.062),
         fPill=Math.max(8.5, cardW*0.058);
@@ -217,7 +436,6 @@ function render(){
       if(a.ri===b.ri){
         drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand);
       } else {
-        // wrap: soft ribbon from end of row down to start of next
         const x1=a.x+cardW*0.78, y1=a.y+cardH-2;
         const x2=b.x+cardW*0.28, y2=b.y-2;
         const rightOut=Math.min(W-10, a.x+cardW+52);
@@ -243,7 +461,194 @@ function render(){
   });
 }
 render();
-let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(render,120);});
+let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
+  if(document.getElementById('view-board').classList.contains('active')) render();
+},120);});
+
+/* ---- Session groups UI ---- */
+const rosterEl=document.getElementById('roster');
+const scenarioPick=document.getElementById('scenarioPick');
+const groupCountEl=document.getElementById('groupCount');
+const groupsEl=document.getElementById('groups');
+const handoffEl=document.getElementById('handoff');
+const historyBox=document.getElementById('historyBox');
+const rosterStatus=document.getElementById('rosterStatus');
+const sessionStatus=document.getElementById('sessionStatus');
+
+SCENARIOS.forEach((sc,i)=>{
+  const opt=document.createElement('option');
+  opt.value=i; opt.textContent=`${i+1}. ${sc.title}`;
+  scenarioPick.appendChild(opt);
+});
+
+function streamToGroupIndex(groups, stream){
+  const idx=groups.findIndex(g=>g.streams.includes(stream));
+  return idx>=0?idx:0;
+}
+
+function renderHistory(store){
+  const names=Object.keys(store.roleHistory).sort((a,b)=>a.localeCompare(b));
+  if(!names.length){ historyBox.textContent='No role history yet. Confirm a scenario after distributing to start tracking.'; return; }
+  historyBox.innerHTML=names.map(n=>{
+    const roles=(store.roleHistory[n]||[]);
+    return `<div><strong>${n}</strong> — ${roles.length?roles.join(', '):'(none yet)'}</div>`;
+  }).join('');
+}
+
+function renderHandoff(scenarioIndex, groups){
+  const sc=SCENARIOS[scenarioIndex];
+  handoffEl.innerHTML='';
+  sc.steps.forEach((st,i)=>{
+    if(i){
+      const sep=document.createElement('span'); sep.className='arrow-sep'; sep.textContent='→';
+      handoffEl.appendChild(sep);
+    }
+    const stream=st[3];
+    const gi=streamToGroupIndex(groups, stream);
+    const g=groups[gi]||{title:'Group ?', members:[]};
+    const hop=document.createElement('div'); hop.className='hop';
+    hop.style.borderColor=STREAM[stream].ac;
+    hop.innerHTML=`<div>
+      <div class="n">${st[0]} ${st[1]}</div>
+      <div class="g">${g.title} · ${stream} · ${STREAM[stream].facilitator}</div>
+    </div>`;
+    handoffEl.appendChild(hop);
+  });
+}
+
+function renderGroups(groups){
+  groupsEl.innerHTML='';
+  groups.forEach((g,i)=>{
+    const card=document.createElement('div'); card.className='group-card';
+    if(g.streams[0]) card.style.background=STREAM[g.streams[0]].bg;
+    const chips=g.streams.map(s=>`<span class="chip" style="background:${STREAM[s].ac}">${s}</span>`).join('')
+      || `<span class="chip" style="background:#94a3b8">Float</span>`;
+    card.innerHTML=
+      `<input class="gtitle" data-i="${i}" value="${g.title.replace(/"/g,'&quot;')}">`+
+      `<div class="streams">${chips}</div>`+
+      `<div class="fac">Follows: ${g.facilitator}</div>`+
+      `<label style="font-size:11px;font-weight:700;color:#475569">Members (one per line)</label>`+
+      `<textarea data-members="${i}">${g.members.join('\n')}</textarea>`;
+    groupsEl.appendChild(card);
+  });
+  groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const store=getStore();
+      const i=+inp.dataset.i;
+      if(store.groups[i]) store.groups[i].title=inp.value.trim()||store.groups[i].title;
+      saveStore(store);
+    });
+  });
+  groupsEl.querySelectorAll('textarea[data-members]').forEach(ta=>{
+    ta.addEventListener('change',()=>{
+      const store=getStore();
+      const i=+ta.dataset.members;
+      if(store.groups[i]) store.groups[i].members=parseRoster(ta.value);
+      saveStore(store);
+      renderHandoff(store.scenarioIndex, store.groups);
+      sessionStatus.textContent='Group members updated.';
+    });
+  });
+}
+
+function syncSessionUI(store, msg){
+  rosterEl.value=store.participants.join('\n');
+  scenarioPick.value=String(store.scenarioIndex);
+  const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
+  if(!store.groups.length){
+    groupCountEl.value=String(Math.max(1, streams.length));
+  } else {
+    groupCountEl.value=String(store.groups.length);
+  }
+  renderGroups(store.groups);
+  renderHandoff(store.scenarioIndex, store.groups);
+  renderHistory(store);
+  if(msg) sessionStatus.textContent=msg;
+}
+
+function autoDistribute(opts={}){
+  const store=getStore();
+  store.participants=parseRoster(rosterEl.value);
+  store.scenarioIndex=+scenarioPick.value;
+  const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
+  let n=+groupCountEl.value;
+  if(!opts.keepCount && opts.fromScenario){
+    n=Math.max(1, streams.length);
+    groupCountEl.value=String(n);
+  }
+  n=Math.max(1, Math.min(20, n||1));
+  groupCountEl.value=String(n);
+  const keepTitles=opts.keepTitles?store.groups.map(g=>g.title):null;
+  store.groups=buildGroupsForScenario(store.scenarioIndex, n, store.participants, store.roleHistory, keepTitles);
+  saveStore(store);
+  syncSessionUI(store, `Distributed ${store.participants.length} people into ${n} group(s) for scenario ${store.scenarioIndex+1} (${streams.join(', ')||'no streams'}).`);
+}
+
+document.getElementById('saveRoster').addEventListener('click',()=>{
+  const store=getStore();
+  store.participants=parseRoster(rosterEl.value);
+  saveStore(store);
+  rosterStatus.textContent=`Saved ${store.participants.length} participants.`;
+  autoDistribute({keepCount:true});
+});
+
+document.getElementById('clearHistory').addEventListener('click',()=>{
+  if(!confirm('Clear all role history? People can be assigned the same streams again.')) return;
+  const store=getStore();
+  store.roleHistory={};
+  saveStore(store);
+  renderHistory(store);
+  rosterStatus.textContent='Role history cleared.';
+});
+
+document.getElementById('redistribute').addEventListener('click',()=>autoDistribute({keepCount:true}));
+
+scenarioPick.addEventListener('change',()=>{
+  autoDistribute({fromScenario:true});
+});
+
+groupCountEl.addEventListener('change',()=>{
+  autoDistribute({keepCount:true});
+});
+
+document.getElementById('confirmRoles').addEventListener('click',()=>{
+  const store=getStore();
+  // pull latest edits from textareas
+  groupsEl.querySelectorAll('textarea[data-members]').forEach(ta=>{
+    const i=+ta.dataset.members;
+    if(store.groups[i]) store.groups[i].members=parseRoster(ta.value);
+  });
+  groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
+    const i=+inp.dataset.i;
+    if(store.groups[i]) store.groups[i].title=inp.value.trim()||store.groups[i].title;
+  });
+  store.groups.forEach(g=>{
+    g.members.forEach(name=>{
+      if(!store.roleHistory[name]) store.roleHistory[name]=[];
+      g.streams.forEach(st=>{
+        if(!store.roleHistory[name].includes(st)) store.roleHistory[name].push(st);
+      });
+    });
+  });
+  saveStore(store);
+  renderHistory(store);
+  sessionStatus.textContent=`Roles confirmed for scenario ${store.scenarioIndex+1}. Next auto-distribute will avoid repeating these streams when possible.`;
+});
+
+// init session view
+(function initSession(){
+  const store=getStore();
+  if(!store.groups.length && store.participants.length){
+    const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
+    store.groups=buildGroupsForScenario(store.scenarioIndex, streams.length||1, store.participants, store.roleHistory);
+    saveStore(store);
+  } else if(!store.groups.length){
+    const streams=uniqueStreams(SCENARIOS[0]);
+    store.groups=buildGroupsForScenario(0, streams.length||1, [], {});
+    saveStore(store);
+  }
+  syncSessionUI(store);
+})();
 </script>
 </body>
 </html>
