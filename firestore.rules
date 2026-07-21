@@ -1,9 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Classroom session board — open for this training tool.
-    // Tighten later if you add real user accounts.
-    match /boards/{boardId} {
+    // Open for this classroom board tool.
+    // Firebase Console → Firestore → Rules → Publish
+    match /{document=**} {
       allow read, write: if true;
     }
   }
