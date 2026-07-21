@@ -216,7 +216,7 @@
 
     <div class="panel">
       <h2>Scenario grouping</h2>
-      <p class="help">Pick a scenario. Groups default to the distinct streams in that path (Reg, ED, Lab…). Raising the count adds empty groups; lowering it asks which two groups to combine. Confirm locks roles into history so the next scenario avoids repeats.</p>
+      <p class="help">Pick a scenario. Groups default to the distinct streams in that path (Reg, ED, Lab…). Raising the count adds empty groups; lowering it asks which two groups to combine, then rebalances headcounts so handoffs stay roughly 1:1. Confirm locks roles into history so the next scenario avoids repeats.</p>
       <div class="controls">
         <div class="field" style="min-width:280px;flex:1">
           <label for="scenarioPick">Scenario</label>
@@ -252,7 +252,7 @@
 <div class="modal-back" id="mergeModal" aria-hidden="true">
   <div class="modal" role="dialog" aria-labelledby="mergeTitle">
     <h3 id="mergeTitle">Combine two groups</h3>
-    <p id="mergeHelp">Choose which two groups to merge into one. Members and streams will be combined.</p>
+    <p id="mergeHelp">Choose which two groups to merge into one. Members and streams will be combined, then all groups are rebalanced to similar sizes for 1:1 handoffs.</p>
     <div class="field">
       <label for="mergeA">First group</label>
       <select id="mergeA"></select>
@@ -544,20 +544,20 @@ function mapStreamsToGroups(streams, nGroups){
   });
 }
 
-function scoreForGroup(name, group, history){
+function scoreForGroup(name, group, history, opts={}){
   const done=history[name]||[];
-  if(!group.streams.length) return done.length; // float groups: prefer people who've done more already
+  const balanceWeight=opts.balanceFirst?10000:1;
+  if(!group.streams.length) return group.members.length*balanceWeight + done.length;
   let repeats=0;
   group.streams.forEach(st=>{if(done.includes(st)) repeats++;});
-  // heavy penalty for repeating any stream in this group; prefer people with fewer total roles
-  return repeats*1000 + done.length*10 + group.members.length;
+  // Prefer fewer members when balancing for 1:1 handoffs; still avoid stream repeats.
+  return group.members.length*balanceWeight + repeats*1000 + done.length*10;
 }
 
-function distributeParticipants(participants, groups, history){
+function distributeParticipants(participants, groups, history, opts={}){
   const gs=groups.map(g=>({...g, members:[]}));
   if(!participants.length||!gs.length) return gs;
 
-  // People with fewer prior roles first; stable by name
   const people=[...participants].sort((a,b)=>{
     const da=(history[a]||[]).length, db=(history[b]||[]).length;
     if(da!==db) return da-db;
@@ -567,7 +567,7 @@ function distributeParticipants(participants, groups, history){
   people.forEach(name=>{
     let best=0, bestScore=Infinity;
     gs.forEach((g,i)=>{
-      const sc=scoreForGroup(name,g,history);
+      const sc=scoreForGroup(name,g,history,opts);
       if(sc<bestScore || (sc===bestScore && g.members.length<gs[best].members.length)){
         bestScore=sc; best=i;
       }
@@ -575,6 +575,18 @@ function distributeParticipants(participants, groups, history){
     gs[best].members.push(name);
   });
   return gs;
+}
+
+/** Even out headcount across groups (keeps stream ownership) for cleaner A→B handoffs. */
+function rebalanceGroupSizes(groups, history){
+  if(!groups.length) return groups;
+  const people=[];
+  groups.forEach(g=>g.members.forEach(n=>{
+    if(!people.some(p=>p.toLowerCase()===n.toLowerCase())) people.push(n);
+  }));
+  if(!people.length) return groups;
+  const shells=groups.map(g=>({...g, members:[]}));
+  return distributeParticipants(people, shells, history||{}, {balanceFirst:true});
 }
 
 function buildGroupsForScenario(scenarioIndex, groupCount, participants, history, keepTitles){
@@ -1041,11 +1053,13 @@ async function reduceGroupsByMerging(targetCount){
       return false;
     }
     groups=mergeTwoGroups(groups, pick.a, pick.b);
+    groups=rebalanceGroupSizes(groups, store.roleHistory);
     remaining--;
   }
   store.groups=groups;
   saveStore(store);
-  syncSessionUI(store, `Combined groups down to ${groups.length} (from ${start}). Restore to ${store.preReduceCount} to auto-distribute again.`);
+  const sizes=groups.map(g=>g.members.length).join('/');
+  syncSessionUI(store, `Combined to ${groups.length} groups (from ${start}) and rebalanced sizes (${sizes}). Restore to ${store.preReduceCount} to auto-distribute again.`);
   return true;
 }
 
