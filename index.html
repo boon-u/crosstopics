@@ -53,7 +53,7 @@
 <body>
 <div class="wrap">
   <h1>🗺️ Patient Journey Board</h1>
-  <p class="tag">Cerner CIS · registration → discharge · eight realistic paths across the team's streams</p>
+  <p class="tag">Cerner CIS · registration → discharge · seven realistic paths across the team's streams</p>
   <div class="legend" id="legend"></div>
   <div id="board"></div>
   <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
@@ -78,17 +78,6 @@ const SCENARIOS = [
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
           ['🩻','Chest X-ray','DI','DI','Department Order Entry'],
           ['🏡','Review & discharge','Outpatient','Provider']]},
-  {title:'ED Presentation → Surgery', sub:'Emergency converts to Inpatient, then general surgery',
-   wrapAfter:6,
-   steps:[['🚑','Quick-register','Emergency','Reg','FirstNet'],
-          ['🩺','Triage & assess','Emergency','ED','PowerChart'],
-          ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
-          ['🩻','CT scan','DI','DI','Department Order Entry'],
-          ['🛏️','Admit (convert)','Emergency → Inpatient','ED','PowerChart'],
-          ['🏥','Inpatient care','Inpatient','Nursing','PowerChart'],
-          ['🔪','IntraOp','General Surgery','Nursing','PowerChart','Rijo'],
-          ['😴','PACU recovery','Day Surgery','Nursing','PowerChart','Rijo'],
-          ['🏡','Discharge home','Day Surgery','Reg','PM Office']]},
   {title:'Recurring Infusion Therapy', sub:'Outpatient in a Bed · Recurring',
    steps:[['📅','Book series','Recurring','Reg','SchAppBook'],
           ['🪪','Check-in','Outpatient in a Bed','Reg','SchAppBook'],
