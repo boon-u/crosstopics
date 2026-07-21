@@ -38,9 +38,38 @@
       box-shadow:0 1px 2px rgba(15,23,42,.05)}
   .dot{width:14px;height:14px;border-radius:5px}
   .scn{background:#ffffffcc;border:1px solid #eef2f7;border-radius:20px;
-       padding:14px 16px 16px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05)}
+       padding:14px 16px 16px;margin:0 0 18px;box-shadow:0 6px 20px rgba(15,23,42,.05);
+       position:relative;overflow:hidden}
   .scn h2{font-size:18px;margin:2px 0 1px}
   .scn .sub{color:var(--muted);font-size:12.5px;margin:0 0 8px}
+  .scn.trauma{
+    background:
+      linear-gradient(135deg, rgba(254,226,226,.55) 0%, rgba(255,255,255,.92) 38%, rgba(224,242,254,.45) 100%);
+    border:1px solid #fecaca;
+    box-shadow:0 10px 28px rgba(185,28,28,.08), 0 2px 8px rgba(15,23,42,.04);
+  }
+  .scn.trauma::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
+    background:linear-gradient(180deg,#dc2626,#f97316 55%,#0891b2);
+  }
+  .scn.trauma h2{letter-spacing:-.3px}
+  .scn .badge-row{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+  .scn .badge{
+    font-size:11px;font-weight:800;letter-spacing:.2px;border-radius:999px;
+    padding:4px 10px;background:#fff;border:1px solid #fecaca;color:#b91c1c;
+  }
+  .scn .badge.cool{border-color:#bae6fd;color:#0369a1}
+  .phase-tag{
+    position:absolute;z-index:2;left:8px;font-size:11px;font-weight:800;
+    letter-spacing:.4px;text-transform:uppercase;color:#fff;border-radius:8px;
+    padding:5px 10px;box-shadow:0 4px 12px rgba(15,23,42,.15);
+    pointer-events:none;white-space:nowrap;
+  }
+  .note.trauma-note{border:1.5px solid rgba(15,23,42,.06)}
+  .note.trauma-note::after{
+    content:"";position:absolute;inset:0;border-radius:15px;pointer-events:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65);
+  }
   .flow{position:relative;width:100%;overflow:visible}
   .canvas{position:relative}
   svg.links{position:absolute;inset:0;overflow:visible;pointer-events:none}
@@ -320,7 +349,12 @@ const SCENARIOS = [
           ['📤','Results to provider','Lab / DI','Reg','PowerChart'],
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
   {title:'MVA Trauma — Emergency Surgery', sub:'Pre-hospital → Emergency → Inpatient → OR',
-   wrapAfter:5,
+   theme:'trauma', wrapAfter:5,
+   phases:[
+     {label:'① Arrival & workup', color:'#dc2626'},
+     {label:'② Care · OR', color:'#db2777'},
+     {label:'③ Recover · go home', color:'#0f766e'},
+   ],
    steps:[['🚑','Pre-arrival and Registration','Pre-hospital','Reg'],
           ['🚨','Trauma activation + documentation','Emergency','ED'],
           ['🧾','Order entry: Lab / Imaging','Emergency','ED'],
@@ -669,16 +703,17 @@ function streamToGroupIndex(groups, stream){
 function renderScenarioInto(target, sc, si, opts={}){
   const groups=opts.groups||null;
   const showTitle=opts.showTitle!==false;
+  const isTrauma=sc.theme==='trauma';
   const pad=8;
   const avail=Math.max(360, target.clientWidth - 34);
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
   const cardH=Math.max(groups?188:168, Math.round(cardW*(groups?1.32:1.22)));
-  const topPad=44;
+  const topPad=isTrauma?52:44;
   const bottomPad=28;
-  const oscil=Math.round(cardH*0.38);
+  const oscil=Math.round(cardH*(isTrauma?0.32:0.38));
   const rowH=topPad + cardH + oscil + bottomPad;
-  const rowGap=56;
+  const rowGap=isTrauma?72:56;
   const fEmj=Math.round(cardW*0.17), fLbl=Math.max(11, cardW*0.09),
         fEnc=Math.max(9.5, cardW*0.068), fMeta=Math.max(9, cardW*0.062),
         fPill=Math.max(8.5, cardW*0.058);
@@ -687,9 +722,19 @@ function renderScenarioInto(target, sc, si, opts={}){
   const nRows=rows.length;
   const W=avail;
   const H=nRows*rowH + (nRows-1)*rowGap;
-  const sec=document.createElement('div'); sec.className='scn';
-  if(showTitle) sec.innerHTML=`<h2>${displayNumberForScenario(si)}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
-  else sec.innerHTML=`<div class="sub" style="margin-top:0">${sc.sub}</div>`;
+  const sec=document.createElement('div');
+  sec.className='scn'+(isTrauma?' trauma':'');
+  let head='';
+  if(showTitle) head=`<h2>${displayNumberForScenario(si)}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
+  else head=`<div class="sub" style="margin-top:0">${sc.sub}</div>`;
+  if(isTrauma){
+    head+=`<div class="badge-row">
+      <span class="badge">Trauma pathway</span>
+      <span class="badge cool">Multi-team hand-off</span>
+      <span class="badge cool">${sc.steps.length} steps</span>
+    </div>`;
+  }
+  sec.innerHTML=head;
   const flow=document.createElement('div'); flow.className='flow';
   const canvas=document.createElement('div'); canvas.className='canvas';
   canvas.style.width=W+'px'; canvas.style.height=H+'px';
@@ -697,6 +742,30 @@ function renderScenarioInto(target, sc, si, opts={}){
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
   svg.setAttribute('class','links'); svg.setAttribute('width',W); svg.setAttribute('height',H);
   canvas.appendChild(svg);
+
+  // Soft row bands for trauma phases
+  if(isTrauma){
+    rows.forEach((n,ri)=>{
+      const yBase=ri*(rowH+rowGap);
+      const band=document.createElement('div');
+      band.style.cssText=`position:absolute;left:0;right:0;top:${yBase}px;height:${rowH}px;
+        border-radius:16px;background:rgba(255,255,255,.35);border:1px dashed rgba(148,163,184,.35);
+        pointer-events:none;z-index:0`;
+      canvas.appendChild(band);
+      const phase=(sc.phases&&sc.phases[ri])||null;
+      if(phase){
+        const tag=document.createElement('div');
+        tag.className='phase-tag';
+        tag.textContent=phase.label;
+        tag.style.background=phase.color;
+        tag.style.left='50%';
+        tag.style.transform='translateX(-50%)';
+        tag.style.top=(yBase+8)+'px';
+        canvas.appendChild(tag);
+      }
+    });
+  }
+
   const pos=[];
   let stepIdx=0;
   rows.forEach((n,ri)=>{
@@ -706,15 +775,16 @@ function renderScenarioInto(target, sc, si, opts={}){
       const st=sc.steps[stepIdx++];
       const x=pad + i*(cardW+gap);
       const y=yBase + topPad + (i%2===0?0:oscil) + (rand()*6-3);
-      const rot=(rand()*5-2.5).toFixed(2);
+      const rot=(rand()*(isTrauma?4:5)-(isTrauma?2:2.5)).toFixed(2);
       pos.push({x,y,ri});
       const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
       const gi=streamToGroupIndex(groups, stream);
       const g=gi>=0?groups[gi]:null;
-      const note=document.createElement('div'); note.className='note';
+      const note=document.createElement('div'); note.className='note'+(isTrauma?' trauma-note':'');
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
       note.style.minHeight=cardH+'px'; note.style.background=s.bg;
       note.style.transform=`rotate(${rot}deg)`;
+      if(isTrauma) note.style.zIndex='1';
       let groupMeta='';
       if(g){
         const faces=g.members.slice(0,3).map(nm=>
@@ -752,14 +822,14 @@ function renderScenarioInto(target, sc, si, opts={}){
         `C ${x1+34} ${y1+18}, ${rightOut} ${y1+30}, ${rightOut-6} ${midY} `+
         `S ${x2+52} ${y2-36}, ${x2} ${y2-12}`);
       path.setAttribute('fill','none');
-      path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
+      path.setAttribute('stroke',col); path.setAttribute('stroke-width', isTrauma?'3':'2.4');
       path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
-      path.setAttribute('opacity','0.72');
+      path.setAttribute('opacity', isTrauma?'0.85':'0.72');
       svg.appendChild(path);
-      const ah=10, axp=x2, ayp=y2-4;
+      const ah=isTrauma?11:10, axp=x2, ayp=y2-4;
       const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
       tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.78} ${ayp-ah}, ${axp+ah*0.78} ${ayp-ah}`);
-      tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
+      tri.setAttribute('fill',col); tri.setAttribute('opacity','0.9');
       svg.appendChild(tri);
     }
   }
