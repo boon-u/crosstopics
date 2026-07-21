@@ -410,7 +410,13 @@ async function initFirebasePersistence(){
   try{
     firebase.initializeApp(window.FIREBASE_CONFIG);
     firestoreDb=firebase.firestore();
-    await firebase.auth().signInAnonymously();
+    // Auth is optional — open Firestore rules work without it.
+    // Enable Authentication → Anonymous in console if you want signed-in clients later.
+    try{
+      await firebase.auth().signInAnonymously();
+    }catch(authErr){
+      console.warn('Anonymous auth unavailable, continuing without Auth:', authErr);
+    }
     const path=window.FIREBASE_BOARD_PATH||{collection:'boards',doc:'crosstopics'};
     boardRef=firestoreDb.collection(path.collection).doc(path.doc);
     const snap=await boardRef.get();
