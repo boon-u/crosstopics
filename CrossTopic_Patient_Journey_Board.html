@@ -692,12 +692,14 @@ async function reduceGroupsByMerging(targetCount){
   let groups=[...store.groups];
   const start=groups.length;
   if(targetCount>=start) return false;
+  if(store.preReduceCount==null) store.preReduceCount=start;
   let remaining=start-targetCount;
   while(groups.length>targetCount){
     const pick=await openMergeDialog(groups, remaining);
     if(!pick){
       groupCountEl.value=String(store.groups.length);
       sessionStatus.textContent='Merge cancelled — group count unchanged.';
+      saveStore(store);
       return false;
     }
     groups=mergeTwoGroups(groups, pick.a, pick.b);
@@ -705,7 +707,7 @@ async function reduceGroupsByMerging(targetCount){
   }
   store.groups=groups;
   saveStore(store);
-  syncSessionUI(store, `Combined groups down to ${groups.length} (from ${start}).`);
+  syncSessionUI(store, `Combined groups down to ${groups.length} (from ${start}). Restore to ${store.preReduceCount} to auto-distribute again.`);
   return true;
 }
 
@@ -718,11 +720,13 @@ function autoDistribute(opts={}){
   if(!opts.keepCount && opts.fromScenario){
     n=Math.max(1, streams.length);
     groupCountEl.value=String(n);
+    store.preReduceCount=null;
   }
   n=Math.max(1, Math.min(20, n||1));
   groupCountEl.value=String(n);
   const keepTitles=opts.keepTitles?store.groups.map(g=>g.title):null;
   store.groups=buildGroupsForScenario(store.scenarioIndex, n, store.participants, store.roleHistory, keepTitles);
+  if(opts.clearPreReduce) store.preReduceCount=null;
   saveStore(store);
   syncSessionUI(store, `Distributed ${store.participants.length} people into ${n} group(s) for scenario ${store.scenarioIndex+1} (${streams.join(', ')||'no streams'}).`);
 }
@@ -763,10 +767,19 @@ groupCountEl.addEventListener('change', async ()=>{
     await reduceGroupsByMerging(n);
     return;
   }
-  // increase: add empty float groups, keep existing people where they are
+  // Restored to the count from before merges → full auto-distribute
+  if(store.preReduceCount!=null && n>=store.preReduceCount){
+    const restored=store.preReduceCount;
+    groupCountEl.value=String(restored);
+    autoDistribute({keepCount:true, clearPreReduce:true});
+    sessionStatus.textContent=`Restored to ${restored} groups and auto-distributed participants.`;
+    return;
+  }
+  // Partial increase: add empty float groups only
   store.groups=addEmptyGroups(store.groups, n);
   saveStore(store);
-  syncSessionUI(store, `Added empty group(s) — now ${n} total. Move people manually or hit Auto-distribute.`);
+  const tip=store.preReduceCount!=null?` Set to ${store.preReduceCount} to auto-distribute.`:'';
+  syncSessionUI(store, `Added empty group(s) — now ${n} total.${tip}`);
 });
 
 document.getElementById('confirmRoles').addEventListener('click',()=>{
