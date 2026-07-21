@@ -89,7 +89,7 @@
   .group-card .streams{display:flex;flex-wrap:wrap;gap:5px}
   .chip{font-size:11px;font-weight:800;color:#fff;border-radius:999px;padding:3px 8px}
   .group-card .fac{font-size:12px;color:var(--muted)}
-  .group-card textarea{min-height:90px;font-size:13px}
+  .group-card .members-label{font-size:11px;font-weight:700;color:#475569}
   .handoff{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .hop{
     display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;
@@ -113,6 +113,53 @@
   .modal p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.45}
   .modal .field{margin-bottom:10px}
   .modal .btn-row{margin-top:14px;justify-content:flex-end}
+
+  .name-cloud{
+    display:flex;flex-wrap:wrap;gap:8px;padding:12px;min-height:64px;
+    background:linear-gradient(145deg,#fff 0%,#f8fafc 100%);
+    border:1px solid #e2e8f0;border-radius:16px;
+  }
+  .name-cloud:empty::after{
+    content:'No one yet — add a name below';
+    color:#94a3b8;font-size:13px;font-style:italic;padding:6px 2px;
+  }
+  .person{
+    display:inline-flex;align-items:center;gap:8px;
+    background:#fff;border:1px solid #e2e8f0;border-radius:999px;
+    padding:5px 8px 5px 5px;box-shadow:0 2px 6px rgba(15,23,42,.06);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .person:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(15,23,42,.1)}
+  .avatar{
+    width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+    color:#fff;font-size:11px;font-weight:800;letter-spacing:.2px;flex-shrink:0;
+  }
+  .person .pname{font-size:13px;font-weight:700;color:#0f172a;max-width:140px;
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .person .x{
+    border:0;background:#f1f5f9;color:#64748b;width:22px;height:22px;border-radius:50%;
+    cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;padding:0;
+  }
+  .person .x:hover{background:#fee2e2;color:#b91c1c}
+  .add-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .add-row input{
+    flex:1;min-width:160px;border:1px solid #dbe2ea;border-radius:999px;padding:9px 14px;
+    font:inherit;
+  }
+  .roster-meta{font-size:12px;color:var(--muted);margin:8px 0 0}
+  .group-card .members-cloud{min-height:48px;padding:8px;background:rgba(255,255,255,.55)}
+  .group-card .add-row{margin-top:4px}
+  .group-card .add-row input{padding:7px 12px;font-size:12.5px}
+  .history-person{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;margin:0 0 8px;
+    background:#fff;border:1px solid #e2e8f0;border-radius:14px;
+  }
+  .history-person:last-child{margin-bottom:0}
+  .history-person .roles{display:flex;flex-wrap:wrap;gap:4px}
+  .history-person .role-chip{
+    font-size:10.5px;font-weight:800;color:#fff;border-radius:999px;padding:2px 7px;
+  }
+  .history-person .empty-role{font-size:12px;color:#94a3b8;font-style:italic}
 </style>
 </head>
 <body>
@@ -133,16 +180,14 @@
   <div class="view" id="view-session">
     <div class="panel">
       <h2>Class roster</h2>
-      <p class="help">One participant name per line. Saved in this browser so you can reuse it across scenarios.</p>
-      <div class="field">
-        <label for="roster">Participants</label>
-        <textarea id="roster" placeholder="Alex&#10;Jordan&#10;Sam&#10;…"></textarea>
+      <p class="help">Add people one by one. Saved in this browser so you can reuse them across scenarios.</p>
+      <div class="name-cloud" id="rosterCloud"></div>
+      <div class="add-row">
+        <input id="rosterInput" type="text" placeholder="Type a name, press Enter…" autocomplete="off">
+        <button class="btn" id="addRosterBtn" type="button">Add</button>
+        <button class="btn secondary" id="clearHistory" type="button">Reset role history</button>
       </div>
-      <div class="btn-row" style="margin-top:10px">
-        <button class="btn" id="saveRoster">Save roster</button>
-        <button class="btn secondary" id="clearHistory">Reset role history</button>
-      </div>
-      <p class="status" id="rosterStatus"></p>
+      <p class="roster-meta" id="rosterStatus"></p>
     </div>
 
     <div class="panel">
@@ -284,6 +329,28 @@ function getStore(){
 function parseRoster(text){
   return text.split(/\n+/).map(x=>x.trim()).filter(Boolean)
     .filter((v,i,a)=>a.findIndex(t=>t.toLowerCase()===v.toLowerCase())===i);
+}
+
+const AVATAR_COLORS=['#2563eb','#db2777','#059669','#d97706','#7c3aed','#0891b2','#dc2626','#4f46e5','#0f766e','#c2410c'];
+function avatarColor(name){
+  let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
+  return AVATAR_COLORS[h%AVATAR_COLORS.length];
+}
+function initials(name){
+  const p=name.trim().split(/\s+/).filter(Boolean);
+  if(!p.length) return '?';
+  if(p.length===1) return p[0].slice(0,2).toUpperCase();
+  return (p[0][0]+p[p.length-1][0]).toUpperCase();
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+function personChipHtml(name, opts={}){
+  const rem=opts.removable?`<button type="button" class="x" data-remove="${escapeHtml(name)}" aria-label="Remove ${escapeHtml(name)}">×</button>`:'';
+  return `<span class="person" title="${escapeHtml(name)}">
+    <span class="avatar" style="background:${avatarColor(name)}">${escapeHtml(initials(name))}</span>
+    <span class="pname">${escapeHtml(name)}</span>${rem}
+  </span>`;
 }
 
 function uniqueStreams(sc){
@@ -499,7 +566,8 @@ let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
 },120);});
 
 /* ---- Session groups UI ---- */
-const rosterEl=document.getElementById('roster');
+const rosterCloud=document.getElementById('rosterCloud');
+const rosterInput=document.getElementById('rosterInput');
 const scenarioPick=document.getElementById('scenarioPick');
 const groupCountEl=document.getElementById('groupCount');
 const groupsEl=document.getElementById('groups');
@@ -519,12 +587,55 @@ function streamToGroupIndex(groups, stream){
   return idx>=0?idx:0;
 }
 
+function renderRosterCloud(participants){
+  rosterCloud.innerHTML=participants.map(n=>personChipHtml(n,{removable:true})).join('');
+  rosterCloud.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const store=getStore();
+      const name=btn.getAttribute('data-remove');
+      store.participants=store.participants.filter(p=>p.toLowerCase()!==name.toLowerCase());
+      store.groups.forEach(g=>{ g.members=g.members.filter(m=>m.toLowerCase()!==name.toLowerCase()); });
+      saveStore(store);
+      syncSessionUI(store, `Removed ${name} from roster.`);
+      rosterStatus.textContent=`${store.participants.length} people on the roster`;
+    });
+  });
+  rosterStatus.textContent=participants.length?`${participants.length} people on the roster`:'Roster is empty';
+}
+
+function addParticipant(name){
+  name=name.trim();
+  if(!name) return;
+  const store=getStore();
+  if(store.participants.some(p=>p.toLowerCase()===name.toLowerCase())){
+    rosterStatus.textContent=`${name} is already on the roster`;
+    return;
+  }
+  store.participants.push(name);
+  saveStore(store);
+  rosterInput.value='';
+  autoDistribute({keepCount:true});
+  rosterStatus.textContent=`Added ${name} · ${store.participants.length} people`;
+}
+
 function renderHistory(store){
-  const names=Object.keys(store.roleHistory).sort((a,b)=>a.localeCompare(b));
+  const names=[...new Set([...store.participants, ...Object.keys(store.roleHistory)])].sort((a,b)=>a.localeCompare(b));
   if(!names.length){ historyBox.textContent='No role history yet. Confirm a scenario after distributing to start tracking.'; return; }
   historyBox.innerHTML=names.map(n=>{
     const roles=(store.roleHistory[n]||[]);
-    return `<div><strong>${n}</strong> — ${roles.length?roles.join(', '):'(none yet)'}</div>`;
+    const roleHtml=roles.length
+      ? roles.map(r=>{
+          const s=STREAM[r];
+          return `<span class="role-chip" style="background:${s?s.ac:'#64748b'}">${escapeHtml(r)}</span>`;
+        }).join('')
+      : `<span class="empty-role">no roles yet</span>`;
+    return `<div class="history-person">
+      <span class="avatar" style="background:${avatarColor(n)}">${escapeHtml(initials(n))}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:13px;margin-bottom:4px">${escapeHtml(n)}</div>
+        <div class="roles">${roleHtml}</div>
+      </div>
+    </div>`;
   }).join('');
 }
 
@@ -541,9 +652,14 @@ function renderHandoff(scenarioIndex, groups){
     const g=groups[gi]||{title:'Group ?', members:[]};
     const hop=document.createElement('div'); hop.className='hop';
     hop.style.borderColor=STREAM[stream].ac;
+    const faces=g.members.slice(0,4).map(n=>
+      `<span class="avatar" style="width:20px;height:20px;font-size:8px;background:${avatarColor(n)}" title="${escapeHtml(n)}">${escapeHtml(initials(n))}</span>`
+    ).join('');
+    const extra=g.members.length>4?`<span style="font-size:11px;color:#64748b;font-weight:700">+${g.members.length-4}</span>`:'';
     hop.innerHTML=`<div>
       <div class="n">${st[0]} ${st[1]}</div>
-      <div class="g">${g.title} · ${stream} · ${STREAM[stream].facilitator}</div>
+      <div class="g">${escapeHtml(g.title)} · ${stream} · ${STREAM[stream].facilitator}</div>
+      <div style="display:flex;gap:3px;align-items:center;margin-top:5px">${faces}${extra}</div>
     </div>`;
     handoffEl.appendChild(hop);
   });
@@ -556,12 +672,17 @@ function renderGroups(groups){
     if(g.streams[0]) card.style.background=STREAM[g.streams[0]].bg;
     const chips=g.streams.map(s=>`<span class="chip" style="background:${STREAM[s].ac}">${s}</span>`).join('')
       || `<span class="chip" style="background:#94a3b8">Float</span>`;
+    const membersHtml=g.members.map(n=>personChipHtml(n,{removable:true})).join('');
     card.innerHTML=
-      `<input class="gtitle" data-i="${i}" value="${g.title.replace(/"/g,'&quot;')}">`+
+      `<input class="gtitle" data-i="${i}" value="${escapeHtml(g.title)}">`+
       `<div class="streams">${chips}</div>`+
-      `<div class="fac">Follows: ${g.facilitator}</div>`+
-      `<label style="font-size:11px;font-weight:700;color:#475569">Members (one per line)</label>`+
-      `<textarea data-members="${i}">${g.members.join('\n')}</textarea>`;
+      `<div class="fac">Follows: ${escapeHtml(g.facilitator)}</div>`+
+      `<div class="members-label">Members</div>`+
+      `<div class="name-cloud members-cloud" data-group="${i}">${membersHtml}</div>`+
+      `<div class="add-row">
+         <input type="text" data-add-group="${i}" placeholder="Add to this group…" autocomplete="off">
+         <button class="btn secondary" type="button" data-add-btn="${i}">Add</button>
+       </div>`;
     groupsEl.appendChild(card);
   });
   groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
@@ -572,20 +693,57 @@ function renderGroups(groups){
       saveStore(store);
     });
   });
-  groupsEl.querySelectorAll('textarea[data-members]').forEach(ta=>{
-    ta.addEventListener('change',()=>{
+  groupsEl.querySelectorAll('[data-remove]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const cloud=btn.closest('[data-group]');
+      if(!cloud) return;
+      const gi=+cloud.dataset.group;
+      const name=btn.getAttribute('data-remove');
       const store=getStore();
-      const i=+ta.dataset.members;
-      if(store.groups[i]) store.groups[i].members=parseRoster(ta.value);
-      saveStore(store);
-      renderHandoff(store.scenarioIndex, store.groups);
-      sessionStatus.textContent='Group members updated.';
+      if(store.groups[gi]){
+        store.groups[gi].members=store.groups[gi].members.filter(m=>m.toLowerCase()!==name.toLowerCase());
+        saveStore(store);
+        syncSessionUI(store);
+        sessionStatus.textContent=`Removed ${name} from group.`;
+      }
+    });
+  });
+  function addToGroup(gi, raw){
+    const name=raw.trim();
+    if(!name) return;
+    const store=getStore();
+    if(!store.groups[gi]) return;
+    if(!store.participants.some(p=>p.toLowerCase()===name.toLowerCase())){
+      store.participants.push(name);
+    }
+    // remove from other groups so a person isn't duplicated
+    store.groups.forEach(g=>{ g.members=g.members.filter(m=>m.toLowerCase()!==name.toLowerCase()); });
+    store.groups[gi].members.push(name);
+    saveStore(store);
+    syncSessionUI(store);
+    sessionStatus.textContent=`Moved ${name} into ${store.groups[gi].title}.`;
+  }
+  groupsEl.querySelectorAll('[data-add-btn]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const gi=+btn.dataset.addBtn;
+      const inp=groupsEl.querySelector(`[data-add-group="${gi}"]`);
+      addToGroup(gi, inp?inp.value:'');
+      if(inp) inp.value='';
+    });
+  });
+  groupsEl.querySelectorAll('[data-add-group]').forEach(inp=>{
+    inp.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        addToGroup(+inp.dataset.addGroup, inp.value);
+        inp.value='';
+      }
     });
   });
 }
 
 function syncSessionUI(store, msg){
-  rosterEl.value=store.participants.join('\n');
+  renderRosterCloud(store.participants);
   scenarioPick.value=String(store.scenarioIndex);
   const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
   if(!store.groups.length){
@@ -600,10 +758,6 @@ function syncSessionUI(store, msg){
 }
 
 function flushGroupEdits(store){
-  groupsEl.querySelectorAll('textarea[data-members]').forEach(ta=>{
-    const i=+ta.dataset.members;
-    if(store.groups[i]) store.groups[i].members=parseRoster(ta.value);
-  });
   groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
     const i=+inp.dataset.i;
     if(store.groups[i]) store.groups[i].title=inp.value.trim()||store.groups[i].title;
@@ -713,7 +867,6 @@ async function reduceGroupsByMerging(targetCount){
 
 function autoDistribute(opts={}){
   const store=getStore();
-  store.participants=parseRoster(rosterEl.value);
   store.scenarioIndex=+scenarioPick.value;
   const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
   let n=+groupCountEl.value;
@@ -731,12 +884,9 @@ function autoDistribute(opts={}){
   syncSessionUI(store, `Distributed ${store.participants.length} people into ${n} group(s) for scenario ${store.scenarioIndex+1} (${streams.join(', ')||'no streams'}).`);
 }
 
-document.getElementById('saveRoster').addEventListener('click',()=>{
-  const store=getStore();
-  store.participants=parseRoster(rosterEl.value);
-  saveStore(store);
-  rosterStatus.textContent=`Saved ${store.participants.length} participants.`;
-  autoDistribute({keepCount:true});
+document.getElementById('addRosterBtn').addEventListener('click',()=>addParticipant(rosterInput.value));
+rosterInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); addParticipant(rosterInput.value); }
 });
 
 document.getElementById('clearHistory').addEventListener('click',()=>{
