@@ -176,7 +176,7 @@
 <body>
 <div class="wrap">
   <h1>🗺️ Patient Journey Board</h1>
-  <p class="tag">Cerner CIS · registration → discharge · seven realistic paths across the team's streams</p>
+  <p class="tag">Cerner CIS · registration → discharge · realistic paths across the team's streams</p>
   <div class="tabs">
     <button class="tab active" data-view="board">Journey Board</button>
     <button class="tab" data-view="session">Session Groups</button>
@@ -285,14 +285,14 @@ const STREAM = {
   Provider:{bg:'var(--prov-bg)',ac:'#B45309',name:'Providers',facilitator:'Mahak'},
 };
 const SCENARIOS = [
-  {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment',
+  {title:'Scheduled Ambulatory Workup', sub:'Outpatient · Single appointment', hidden:true,
    steps:[['📅','Book appointment','Outpatient · Single','Reg','SchAppBook'],
           ['📝','Register / check-in','Outpatient','Reg','SchAppBook'],
           ['🩺','Clinic visit + orders','Outpatient','Nursing','PowerChart'],
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
           ['🩻','Chest X-ray','DI','DI','Department Order Entry'],
           ['🏡','Review & discharge','Outpatient','Provider']]},
-  {title:'Recurring Infusion Therapy', sub:'Outpatient in a Bed · Recurring',
+  {title:'Recurring Infusion Therapy', sub:'Outpatient in a Bed · Recurring', hidden:true,
    steps:[['📅','Book series','Recurring','Reg','SchAppBook'],
           ['🪪','Check-in','Outpatient in a Bed','Reg','SchAppBook'],
           ['🩸','Pre-infusion bloodwork','Lab','Lab','Department Order Entry'],
@@ -313,7 +313,7 @@ const SCENARIOS = [
           ['👥','Group therapy session','Outpatient','MHA','PowerChart'],
           ['🔁','Recurring group series','Group Session','MHA','PowerChart'],
           ['✅','Program discharge','Outpatient','MHA','PowerChart']]},
-  {title:'Standalone Lab & DI (order-driven)', sub:'Lab + DI · Single',
+  {title:'Standalone Lab & DI (order-driven)', sub:'Lab + DI · Single', hidden:true,
    steps:[['📄','GP requisition','Single','Reg','PM Office'],
           ['📝','Register','Lab / DI','Reg','PM Office'],
           ['🩸','Bloodwork','Lab','Lab','Department Order Entry'],
@@ -336,6 +336,18 @@ const SCENARIOS = [
           ['🛌','Post-op inpatient care','Inpatient','Peri'],
           ['🏡','Discharge','Inpatient','Nursing','','Rijo']]},
 ];
+function visibleScenarios(){
+  return SCENARIOS.map((sc,i)=>({sc,i})).filter(x=>!x.sc.hidden);
+}
+function firstVisibleScenarioIndex(){
+  const v=visibleScenarios();
+  return v.length?v[0].i:0;
+}
+function displayNumberForScenario(si){
+  const v=visibleScenarios();
+  const idx=v.findIndex(x=>x.i===si);
+  return idx>=0?idx+1:si+1;
+}
 
 const STORE_KEY='pjBoard.session.v1';
 let memoryStore=null;
@@ -677,7 +689,7 @@ function renderScenarioInto(target, sc, si, opts={}){
   const W=avail;
   const H=nRows*rowH + (nRows-1)*rowGap;
   const sec=document.createElement('div'); sec.className='scn';
-  if(showTitle) sec.innerHTML=`<h2>${si+1}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
+  if(showTitle) sec.innerHTML=`<h2>${displayNumberForScenario(si)}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
   else sec.innerHTML=`<div class="sub" style="margin-top:0">${sc.sub}</div>`;
   const flow=document.createElement('div'); flow.className='flow';
   const canvas=document.createElement('div'); canvas.className='canvas';
@@ -757,7 +769,7 @@ function renderScenarioInto(target, sc, si, opts={}){
 
 function render(){
   board.innerHTML='';
-  SCENARIOS.forEach((sc,si)=>renderScenarioInto(board, sc, si, {showTitle:true}));
+  visibleScenarios().forEach(({sc,i})=>renderScenarioInto(board, sc, i, {showTitle:true}));
 }
 
 function renderSessionScenario(scenarioIndex, groups){
@@ -789,8 +801,9 @@ const rosterStatus=document.getElementById('rosterStatus');
 const sessionStatus=document.getElementById('sessionStatus');
 
 SCENARIOS.forEach((sc,i)=>{
+  if(sc.hidden) return;
   const opt=document.createElement('option');
-  opt.value=i; opt.textContent=`${i+1}. ${sc.title}`;
+  opt.value=i; opt.textContent=`${displayNumberForScenario(i)}. ${sc.title}`;
   scenarioPick.appendChild(opt);
 });
 
@@ -951,6 +964,10 @@ function renderGroups(groups){
 
 function syncSessionUI(store, msg){
   renderRosterCloud(store.participants);
+  if(SCENARIOS[store.scenarioIndex]?.hidden){
+    store.scenarioIndex=firstVisibleScenarioIndex();
+    saveStore(store);
+  }
   scenarioPick.value=String(store.scenarioIndex);
   const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
   if(!store.groups.length){
