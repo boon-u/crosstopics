@@ -106,7 +106,7 @@ const SCENARIOS = [
           ['🫧','Ultrasound','DI','DI','Department Order Entry'],
           ['📤','Results to provider','Lab / DI','Reg','PowerChart'],
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
-  {title:'MVA Trauma — Emergency Surgery → Elective Return', sub:'Pre-hospital → Emergency → Inpatient → OR → (later) Day Surgery',
+  {title:'MVA Trauma — Emergency Surgery', sub:'Pre-hospital → Emergency → Inpatient → OR',
    wrapAfter:5,
    steps:[['🚑','Pre-arrival & trauma activation','Pre-hospital','EMS'],
           ['🚨','Trauma bay + documentation','Emergency','ED'],
@@ -119,10 +119,8 @@ const SCENARIOS = [
           ['✅','Pre-op checklist','Inpatient','Nursing'],
           ['🔪','Emergency surgery','Inpatient · OR','Peri'],
           ['😴','PACU','Inpatient','Peri'],
-          ['🛌','Post-op inpatient care','Inpatient','Nursing'],
-          ['🏡','Discharge (returns for elective)','Inpatient','Reg'],
-          ['📅','Book elective surgery','Day Surgery · Single','Reg'],
-          ['🔧','Elective day surgery','Day Surgery · pre-op→PACU','Peri']]},
+          ['🛌','Post-op inpatient care','Inpatient','Peri'],
+          ['🏡','Discharge','Inpatient','Nursing','','Rijo']]},
 ];
 function rng(seed){let s=seed;return()=>{s=(s*9301+49297)%233280;return s/233280;};}
 function rowLens(sc){
