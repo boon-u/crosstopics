@@ -196,12 +196,20 @@
     </div>
     <div class="panel">
       <h2>Class roster</h2>
-      <p class="help">Add people one by one. Saved in this browser so you can reuse them across scenarios.</p>
+      <p class="help">Add one name, or paste the whole class (one name per line) and hit <strong>Add class list</strong>.</p>
       <div class="name-cloud" id="rosterCloud"></div>
       <div class="add-row">
-        <input id="rosterInput" type="text" placeholder="Type a name, press Enter…" autocomplete="off">
+        <input id="rosterInput" type="text" placeholder="One name, press Enter…" autocomplete="off">
         <button class="btn" id="addRosterBtn" type="button">Add</button>
         <button class="btn secondary" id="clearHistory" type="button">Reset role history</button>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="rosterBulk">Paste class list</label>
+        <textarea id="rosterBulk" placeholder="Alex&#10;Jordan&#10;Sam&#10;Taylor&#10;…"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn" id="addBulkBtn" type="button">Add class list</button>
+        <button class="btn secondary" id="clearRosterBtn" type="button">Clear roster</button>
       </div>
       <p class="roster-meta" id="rosterStatus"></p>
     </div>
@@ -756,6 +764,11 @@ function renderRosterCloud(participants){
 function addParticipant(name){
   name=name.trim();
   if(!name) return;
+  // If paste included multiple lines in the single field, treat as bulk
+  if(/[\n\r]/.test(name)){
+    addParticipantsBulk(name);
+    return;
+  }
   const store=getStore();
   if(store.participants.some(p=>p.toLowerCase()===name.toLowerCase())){
     rosterStatus.textContent=`${name} is already on the roster`;
@@ -766,6 +779,27 @@ function addParticipant(name){
   rosterInput.value='';
   autoDistribute({keepCount:true});
   rosterStatus.textContent=`Added ${name} · ${store.participants.length} people`;
+}
+
+function addParticipantsBulk(text){
+  const names=parseRoster(text);
+  if(!names.length){
+    rosterStatus.textContent='No names found to add';
+    return;
+  }
+  const store=getStore();
+  let added=0, skipped=0;
+  names.forEach(name=>{
+    if(store.participants.some(p=>p.toLowerCase()===name.toLowerCase())){ skipped++; return; }
+    store.participants.push(name);
+    added++;
+  });
+  saveStore(store);
+  const bulk=document.getElementById('rosterBulk');
+  if(bulk) bulk.value='';
+  rosterInput.value='';
+  autoDistribute({keepCount:true});
+  rosterStatus.textContent=`Added ${added} student${added===1?'':'s'}${skipped?` · skipped ${skipped} duplicate${skipped===1?'':'s'}`:''} · ${store.participants.length} total`;
 }
 
 function renderHistory(store){
@@ -1037,6 +1071,18 @@ function autoDistribute(opts={}){
 document.getElementById('addRosterBtn').addEventListener('click',()=>addParticipant(rosterInput.value));
 rosterInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'){ e.preventDefault(); addParticipant(rosterInput.value); }
+});
+document.getElementById('addBulkBtn').addEventListener('click',()=>{
+  addParticipantsBulk(document.getElementById('rosterBulk').value);
+});
+document.getElementById('clearRosterBtn').addEventListener('click',()=>{
+  if(!confirm('Clear the whole class roster?')) return;
+  const store=getStore();
+  store.participants=[];
+  store.groups.forEach(g=>{ g.members=[]; });
+  saveStore(store);
+  syncSessionUI(store);
+  rosterStatus.textContent='Roster cleared';
 });
 
 document.getElementById('clearHistory').addEventListener('click',()=>{
