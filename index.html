@@ -236,9 +236,9 @@
     </div>
 
     <div class="panel">
-      <h2>Workflow hand-offs</h2>
-      <p class="help">Follow the scenario left to right. The same group comes back whenever their stream appears again.</p>
-      <div class="handoff" id="handoff"></div>
+      <h2>Scenario journey</h2>
+      <p class="help">Same sticky-note diagram as the Journey Board for the scenario selected above. Cards show which session group owns each step.</p>
+      <div id="sessionBoard"></div>
     </div>
 
     <div class="panel">
@@ -608,6 +608,11 @@ document.querySelectorAll('.tab').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
     if(btn.dataset.view==='board') render();
+    if(btn.dataset.view==='session'){
+      const store=getStore();
+      // defer so the panel is visible and has width for layout
+      requestAnimationFrame(()=>renderSessionScenario(store.scenarioIndex, store.groups));
+    }
   });
 });
 
@@ -644,13 +649,20 @@ function drawArrow(svg, x1,y1,x2,y2, col, rand){
   svg.appendChild(tri);
 }
 
-function render(){
-  board.innerHTML='';
+function streamToGroupIndex(groups, stream){
+  if(!groups||!groups.length) return -1;
+  const idx=groups.findIndex(g=>g.streams&&g.streams.includes(stream));
+  return idx;
+}
+
+function renderScenarioInto(target, sc, si, opts={}){
+  const groups=opts.groups||null;
+  const showTitle=opts.showTitle!==false;
   const pad=8;
-  const avail=Math.max(360, board.clientWidth - 34);
+  const avail=Math.max(360, target.clientWidth - 34);
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
-  const cardH=Math.max(168, Math.round(cardW*1.22));
+  const cardH=Math.max(groups?188:168, Math.round(cardW*(groups?1.32:1.22)));
   const topPad=44;
   const bottomPad=28;
   const oscil=Math.round(cardH*0.38);
@@ -660,79 +672,110 @@ function render(){
         fEnc=Math.max(9.5, cardW*0.068), fMeta=Math.max(9, cardW*0.062),
         fPill=Math.max(8.5, cardW*0.058);
 
-  SCENARIOS.forEach((sc,si)=>{
-    const rows=rowLens(sc);
-    const nRows=rows.length;
-    const W=avail;
-    const H=nRows*rowH + (nRows-1)*rowGap;
-    const sec=document.createElement('div'); sec.className='scn';
-    sec.innerHTML=`<h2>${si+1}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
-    const flow=document.createElement('div'); flow.className='flow';
-    const canvas=document.createElement('div'); canvas.className='canvas';
-    canvas.style.width=W+'px'; canvas.style.height=H+'px';
-    const rand=rng(si*97+13);
-    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-    svg.setAttribute('class','links'); svg.setAttribute('width',W); svg.setAttribute('height',H);
-    canvas.appendChild(svg);
-    const pos=[];
-    let stepIdx=0;
-    rows.forEach((n,ri)=>{
-      const gap=n>1?(W - 2*pad - n*cardW)/(n-1):0;
-      const yBase=ri*(rowH+rowGap);
-      for(let i=0;i<n;i++){
-        const st=sc.steps[stepIdx++];
-        const x=pad + i*(cardW+gap);
-        const y=yBase + topPad + (i%2===0?0:oscil) + (rand()*6-3);
-        const rot=(rand()*5-2.5).toFixed(2);
-        pos.push({x,y,ri});
-        const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
-        const note=document.createElement('div'); note.className='note';
-        note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
-        note.style.minHeight=cardH+'px'; note.style.background=s.bg;
-        note.style.transform=`rotate(${rot}deg)`;
-        note.innerHTML=
-          `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
-          `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
-          `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
-          `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
-          (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
-          `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
-        canvas.appendChild(note);
+  const rows=rowLens(sc);
+  const nRows=rows.length;
+  const W=avail;
+  const H=nRows*rowH + (nRows-1)*rowGap;
+  const sec=document.createElement('div'); sec.className='scn';
+  if(showTitle) sec.innerHTML=`<h2>${si+1}. ${sc.title}</h2><div class="sub">${sc.sub}</div>`;
+  else sec.innerHTML=`<div class="sub" style="margin-top:0">${sc.sub}</div>`;
+  const flow=document.createElement('div'); flow.className='flow';
+  const canvas=document.createElement('div'); canvas.className='canvas';
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  const rand=rng(si*97+13);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('class','links'); svg.setAttribute('width',W); svg.setAttribute('height',H);
+  canvas.appendChild(svg);
+  const pos=[];
+  let stepIdx=0;
+  rows.forEach((n,ri)=>{
+    const gap=n>1?(W - 2*pad - n*cardW)/(n-1):0;
+    const yBase=ri*(rowH+rowGap);
+    for(let i=0;i<n;i++){
+      const st=sc.steps[stepIdx++];
+      const x=pad + i*(cardW+gap);
+      const y=yBase + topPad + (i%2===0?0:oscil) + (rand()*6-3);
+      const rot=(rand()*5-2.5).toFixed(2);
+      pos.push({x,y,ri});
+      const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
+      const gi=streamToGroupIndex(groups, stream);
+      const g=gi>=0?groups[gi]:null;
+      const note=document.createElement('div'); note.className='note';
+      note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
+      note.style.minHeight=cardH+'px'; note.style.background=s.bg;
+      note.style.transform=`rotate(${rot}deg)`;
+      let groupMeta='';
+      if(g){
+        const faces=g.members.slice(0,3).map(nm=>
+          `<span class="avatar" style="width:16px;height:16px;font-size:7px;background:${avatarColor(nm)}" title="${escapeHtml(nm)}">${escapeHtml(initials(nm))}</span>`
+        ).join('');
+        const extra=g.members.length>3?`<span style="font-size:10px;font-weight:700;color:#475569">+${g.members.length-3}</span>`:'';
+        groupMeta=
+          `<div class="meta" style="font-size:${fMeta}px;font-weight:800">Group: ${escapeHtml(g.title.replace(/^Group \d+ — /,''))}</div>`+
+          `<div style="display:flex;gap:2px;align-items:center;margin:2px 0">${faces}${extra}</div>`;
       }
-    });
-    for(let i=0;i<pos.length-1;i++){
-      const a=pos[i], b=pos[i+1];
-      const col=STREAM[sc.steps[i+1][3]].ac;
-      if(a.ri===b.ri){
-        drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand);
-      } else {
-        const x1=a.x+cardW*0.78, y1=a.y+cardH-2;
-        const x2=b.x+cardW*0.28, y2=b.y-2;
-        const rightOut=Math.min(W-10, a.x+cardW+52);
-        const midY=y1+(y2-y1)*0.48;
-        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-        path.setAttribute('d',
-          `M ${x1} ${y1} `+
-          `C ${x1+34} ${y1+18}, ${rightOut} ${y1+30}, ${rightOut-6} ${midY} `+
-          `S ${x2+52} ${y2-36}, ${x2} ${y2-12}`);
-        path.setAttribute('fill','none');
-        path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
-        path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
-        path.setAttribute('opacity','0.72');
-        svg.appendChild(path);
-        const ah=10, axp=x2, ayp=y2-4;
-        const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
-        tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.78} ${ayp-ah}, ${axp+ah*0.78} ${ayp-ah}`);
-        tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
-        svg.appendChild(tri);
-      }
+      note.innerHTML=
+        `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
+        `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
+        `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
+        `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
+        (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
+        groupMeta+
+        `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
+      canvas.appendChild(note);
     }
-    flow.appendChild(canvas); sec.appendChild(flow); board.appendChild(sec);
   });
+  for(let i=0;i<pos.length-1;i++){
+    const a=pos[i], b=pos[i+1];
+    const col=STREAM[sc.steps[i+1][3]].ac;
+    if(a.ri===b.ri){
+      drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand);
+    } else {
+      const x1=a.x+cardW*0.78, y1=a.y+cardH-2;
+      const x2=b.x+cardW*0.28, y2=b.y-2;
+      const rightOut=Math.min(W-10, a.x+cardW+52);
+      const midY=y1+(y2-y1)*0.48;
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d',
+        `M ${x1} ${y1} `+
+        `C ${x1+34} ${y1+18}, ${rightOut} ${y1+30}, ${rightOut-6} ${midY} `+
+        `S ${x2+52} ${y2-36}, ${x2} ${y2-12}`);
+      path.setAttribute('fill','none');
+      path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.4');
+      path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
+      path.setAttribute('opacity','0.72');
+      svg.appendChild(path);
+      const ah=10, axp=x2, ayp=y2-4;
+      const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*0.78} ${ayp-ah}, ${axp+ah*0.78} ${ayp-ah}`);
+      tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
+      svg.appendChild(tri);
+    }
+  }
+  flow.appendChild(canvas); sec.appendChild(flow); target.appendChild(sec);
 }
+
+function render(){
+  board.innerHTML='';
+  SCENARIOS.forEach((sc,si)=>renderScenarioInto(board, sc, si, {showTitle:true}));
+}
+
+function renderSessionScenario(scenarioIndex, groups){
+  const el=document.getElementById('sessionBoard');
+  if(!el) return;
+  el.innerHTML='';
+  const sc=SCENARIOS[scenarioIndex];
+  if(!sc) return;
+  renderScenarioInto(el, sc, scenarioIndex, {showTitle:true, groups});
+}
+
 render();
 let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
   if(document.getElementById('view-board').classList.contains('active')) render();
+  if(document.getElementById('view-session').classList.contains('active')){
+    const store=getStore();
+    renderSessionScenario(store.scenarioIndex, store.groups);
+  }
 },120);});
 
 /* ---- Session groups UI ---- */
@@ -741,7 +784,6 @@ const rosterInput=document.getElementById('rosterInput');
 const scenarioPick=document.getElementById('scenarioPick');
 const groupCountEl=document.getElementById('groupCount');
 const groupsEl=document.getElementById('groups');
-const handoffEl=document.getElementById('handoff');
 const historyBox=document.getElementById('historyBox');
 const rosterStatus=document.getElementById('rosterStatus');
 const sessionStatus=document.getElementById('sessionStatus');
@@ -751,11 +793,6 @@ SCENARIOS.forEach((sc,i)=>{
   opt.value=i; opt.textContent=`${i+1}. ${sc.title}`;
   scenarioPick.appendChild(opt);
 });
-
-function streamToGroupIndex(groups, stream){
-  const idx=groups.findIndex(g=>g.streams.includes(stream));
-  return idx>=0?idx:0;
-}
 
 function renderRosterCloud(participants){
   rosterCloud.innerHTML=participants.map(n=>personChipHtml(n,{removable:true})).join('');
@@ -833,32 +870,6 @@ function renderHistory(store){
       </div>
     </div>`;
   }).join('');
-}
-
-function renderHandoff(scenarioIndex, groups){
-  const sc=SCENARIOS[scenarioIndex];
-  handoffEl.innerHTML='';
-  sc.steps.forEach((st,i)=>{
-    if(i){
-      const sep=document.createElement('span'); sep.className='arrow-sep'; sep.textContent='→';
-      handoffEl.appendChild(sep);
-    }
-    const stream=st[3];
-    const gi=streamToGroupIndex(groups, stream);
-    const g=groups[gi]||{title:'Group ?', members:[]};
-    const hop=document.createElement('div'); hop.className='hop';
-    hop.style.borderColor=STREAM[stream].ac;
-    const faces=g.members.slice(0,4).map(n=>
-      `<span class="avatar" style="width:20px;height:20px;font-size:8px;background:${avatarColor(n)}" title="${escapeHtml(n)}">${escapeHtml(initials(n))}</span>`
-    ).join('');
-    const extra=g.members.length>4?`<span style="font-size:11px;color:#64748b;font-weight:700">+${g.members.length-4}</span>`:'';
-    hop.innerHTML=`<div>
-      <div class="n">${st[0]} ${st[1]}</div>
-      <div class="g">${escapeHtml(g.title)} · ${stream} · ${STREAM[stream].facilitator}</div>
-      <div style="display:flex;gap:3px;align-items:center;margin-top:5px">${faces}${extra}</div>
-    </div>`;
-    handoffEl.appendChild(hop);
-  });
 }
 
 function renderGroups(groups){
@@ -948,7 +959,7 @@ function syncSessionUI(store, msg){
     groupCountEl.value=String(store.groups.length);
   }
   renderGroups(store.groups);
-  renderHandoff(store.scenarioIndex, store.groups);
+  renderSessionScenario(store.scenarioIndex, store.groups);
   renderHistory(store);
   if(msg) sessionStatus.textContent=msg;
 }
