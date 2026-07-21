@@ -217,26 +217,26 @@
       <span class="muted" id="persistDetail"></span>
     </div>
 
-    <div class="gate-bar" id="sessionGate">
+    <div class="gate-bar" id="sessionGate" hidden>
       <div class="gate-copy">
-        <h3>Session Groups access</h3>
-        <p>Students stay in <strong>view-only</strong> so they can’t edit or delete the roster. Facilitators unlock admin with the passkey.</p>
+        <h3>Unlock admin</h3>
+        <p>Enter the facilitator passkey to edit roster and groups.</p>
       </div>
       <div class="gate-actions">
-        <button class="btn secondary" type="button" id="enterViewerBtn">Continue as viewer</button>
         <input id="adminPass" type="password" placeholder="Admin passkey" autocomplete="off">
         <button class="btn" type="button" id="enterAdminBtn">Unlock admin</button>
+        <button class="btn secondary" type="button" id="cancelAdminBtn">Cancel</button>
       </div>
       <p class="status" id="gateStatus" style="width:100%;margin:0"></p>
     </div>
 
-    <div id="sessionContent" hidden>
+    <div id="sessionContent">
       <div class="persist-bar" style="margin-bottom:14px">
-        <span class="mode-pill" id="modePill">View-only</span>
-        <span class="muted" id="modeHint">You can look, not edit.</span>
+        <span class="mode-pill viewer" id="modePill">View-only</span>
+        <span class="muted" id="modeHint">Look up your group — editing is locked.</span>
         <span style="flex:1"></span>
+        <button class="btn secondary" type="button" id="unlockAdminBtn">Admin unlock</button>
         <button class="btn secondary admin-only" type="button" id="lockAdminBtn">Lock admin</button>
-        <button class="btn secondary" type="button" id="switchGateBtn" hidden>Change access</button>
       </div>
 
     <div class="panel">
@@ -855,13 +855,14 @@ let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
 
 const ADMIN_PASSKEY='b00n777';
 const ADMIN_SESSION_KEY='pjBoard.adminUnlocked';
-let sessionMode=null; // null | 'viewer' | 'admin'
+let sessionMode='viewer'; // 'viewer' | 'admin'
 
 function isAdmin(){ return sessionMode==='admin'; }
 function requireAdmin(){
   if(isAdmin()) return true;
-  const gateStatus=document.getElementById('gateStatus');
-  if(gateStatus) gateStatus.textContent='Admin passkey required to make changes.';
+  const hint=document.getElementById('modeHint');
+  if(hint) hint.textContent='Admin passkey required to make changes.';
+  openAdminGate();
   return false;
 }
 function applySessionMode(){
@@ -870,36 +871,43 @@ function applySessionMode(){
   const pill=document.getElementById('modePill');
   const hint=document.getElementById('modeHint');
   const viewRoot=document.getElementById('view-session');
-  if(!content||!gate) return;
-  if(!sessionMode){
-    gate.hidden=false;
-    content.hidden=true;
-    viewRoot.classList.remove('session-readonly');
-    return;
-  }
-  gate.hidden=true;
+  const unlockBtn=document.getElementById('unlockAdminBtn');
+  if(!content||!viewRoot) return;
   content.hidden=false;
   const admin=sessionMode==='admin';
   viewRoot.classList.toggle('session-readonly', !admin);
+  if(gate) gate.hidden=admin || gate.dataset.force!=='1';
+  if(!admin && gate && gate.dataset.force!=='1') gate.hidden=true;
   if(pill){
     pill.textContent=admin?'Admin':'View-only';
     pill.className='mode-pill '+(admin?'admin':'viewer');
   }
   if(hint) hint.textContent=admin?'You can edit roster, groups, and history.':'Look up your group — editing is locked.';
+  if(unlockBtn) unlockBtn.hidden=admin;
   const scenarioPick=document.getElementById('scenarioPick');
   if(scenarioPick) scenarioPick.disabled=!admin;
 }
-
-function enterViewer(){
-  sessionMode='viewer';
-  sessionStorage.removeItem(ADMIN_SESSION_KEY);
-  applySessionMode();
-  syncSessionUI(getStore());
+function openAdminGate(){
+  const gate=document.getElementById('sessionGate');
+  if(!gate) return;
+  gate.dataset.force='1';
+  gate.hidden=false;
+  const passEl=document.getElementById('adminPass');
+  if(passEl){ passEl.focus(); }
 }
+function closeAdminGate(){
+  const gate=document.getElementById('sessionGate');
+  if(!gate) return;
+  gate.dataset.force='';
+  gate.hidden=true;
+  const gateStatus=document.getElementById('gateStatus');
+  if(gateStatus) gateStatus.textContent='';
+}
+
 function enterAdmin(pass){
   const gateStatus=document.getElementById('gateStatus');
   if(pass!==ADMIN_PASSKEY){
-    if(gateStatus) gateStatus.textContent='Wrong passkey. Try again, or continue as viewer.';
+    if(gateStatus) gateStatus.textContent='Wrong passkey. Still in view-only.';
     return false;
   }
   sessionMode='admin';
@@ -907,15 +915,17 @@ function enterAdmin(pass){
   if(gateStatus) gateStatus.textContent='';
   const passEl=document.getElementById('adminPass');
   if(passEl) passEl.value='';
+  closeAdminGate();
   applySessionMode();
-  syncSessionUI(getStore());
+  syncSessionUI(getStore(), 'Admin unlocked.');
   return true;
 }
 function lockAdmin(){
   sessionMode='viewer';
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  closeAdminGate();
   applySessionMode();
-  syncSessionUI(getStore(), 'Switched to view-only.');
+  syncSessionUI(getStore(), 'Back to view-only.');
 }
 
 /* ---- Session groups UI ---- */
@@ -1100,7 +1110,6 @@ function renderGroups(groups){
 
 function syncSessionUI(store, msg){
   applySessionMode();
-  if(!sessionMode) return;
   renderRosterCloud(store.participants);
   if(SCENARIOS[store.scenarioIndex]?.hidden){
     store.scenarioIndex=firstVisibleScenarioIndex();
@@ -1250,13 +1259,14 @@ function autoDistribute(opts={}){
   syncSessionUI(store, `Distributed ${store.participants.length} people into ${n} group(s) for scenario ${store.scenarioIndex+1} (${streams.join(', ')||'no streams'}).`);
 }
 
-document.getElementById('enterViewerBtn').addEventListener('click', enterViewer);
 document.getElementById('enterAdminBtn').addEventListener('click',()=>{
   enterAdmin(document.getElementById('adminPass').value);
 });
 document.getElementById('adminPass').addEventListener('keydown',e=>{
   if(e.key==='Enter'){ e.preventDefault(); enterAdmin(document.getElementById('adminPass').value); }
 });
+document.getElementById('unlockAdminBtn').addEventListener('click', openAdminGate);
+document.getElementById('cancelAdminBtn').addEventListener('click', closeAdminGate);
 document.getElementById('lockAdminBtn').addEventListener('click', lockAdmin);
 
 document.getElementById('addRosterBtn').addEventListener('click',()=>addParticipant(rosterInput.value));
@@ -1344,9 +1354,7 @@ document.getElementById('confirmRoles').addEventListener('click',()=>{
 // init session view after Firebase (or local fallback) is ready
 (async function initSession(){
   await initFirebasePersistence();
-  if(sessionStorage.getItem(ADMIN_SESSION_KEY)==='1'){
-    sessionMode='admin';
-  }
+  sessionMode=(sessionStorage.getItem(ADMIN_SESSION_KEY)==='1')?'admin':'viewer';
   applySessionMode();
   const store=getStore();
   if(isAdmin()){
@@ -1361,7 +1369,7 @@ document.getElementById('confirmRoles').addEventListener('click',()=>{
       saveStore(store);
     }
   }
-  if(sessionMode) syncSessionUI(store);
+  syncSessionUI(store);
 })();
 </script>
 </body>
