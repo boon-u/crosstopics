@@ -171,6 +171,28 @@
   .persist-dot.err{background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.2)}
   .persist-bar strong{font-weight:800}
   .persist-bar .muted{color:var(--muted)}
+  .gate-bar{
+    display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+    margin:0 0 14px;padding:14px 16px;border-radius:16px;
+    background:linear-gradient(135deg,#fff,#f8fafc);border:1px solid #e2e8f0;
+  }
+  .gate-bar .gate-copy{flex:1;min-width:200px}
+  .gate-bar h3{margin:0 0 4px;font-size:15px}
+  .gate-bar p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.4}
+  .gate-bar .gate-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .gate-bar input[type=password]{
+    border:1px solid #dbe2ea;border-radius:10px;padding:8px 12px;font:inherit;min-width:140px;
+  }
+  .mode-pill{
+    font-size:11px;font-weight:800;border-radius:999px;padding:4px 10px;
+    border:1px solid #e2e8f0;background:#fff;color:#475569;
+  }
+  .mode-pill.admin{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+  .mode-pill.viewer{border-color:#e2e8f0;background:#f8fafc;color:#64748b}
+  .session-readonly .admin-only{display:none!important}
+  .session-readonly .gtitle{pointer-events:none;border-bottom-color:transparent}
+  .session-readonly .person{cursor:default}
+  .session-readonly .person:hover{transform:none;box-shadow:0 2px 6px rgba(15,23,42,.06)}
 </style>
 </head>
 <body>
@@ -194,20 +216,43 @@
       <span id="persistLabel"><strong>Persistence:</strong> starting…</span>
       <span class="muted" id="persistDetail"></span>
     </div>
+
+    <div class="gate-bar" id="sessionGate">
+      <div class="gate-copy">
+        <h3>Session Groups access</h3>
+        <p>Students stay in <strong>view-only</strong> so they can’t edit or delete the roster. Facilitators unlock admin with the passkey.</p>
+      </div>
+      <div class="gate-actions">
+        <button class="btn secondary" type="button" id="enterViewerBtn">Continue as viewer</button>
+        <input id="adminPass" type="password" placeholder="Admin passkey" autocomplete="off">
+        <button class="btn" type="button" id="enterAdminBtn">Unlock admin</button>
+      </div>
+      <p class="status" id="gateStatus" style="width:100%;margin:0"></p>
+    </div>
+
+    <div id="sessionContent" hidden>
+      <div class="persist-bar" style="margin-bottom:14px">
+        <span class="mode-pill" id="modePill">View-only</span>
+        <span class="muted" id="modeHint">You can look, not edit.</span>
+        <span style="flex:1"></span>
+        <button class="btn secondary admin-only" type="button" id="lockAdminBtn">Lock admin</button>
+        <button class="btn secondary" type="button" id="switchGateBtn" hidden>Change access</button>
+      </div>
+
     <div class="panel">
       <h2>Class roster</h2>
       <p class="help">Add one name, or paste the whole class (one name per line) and hit <strong>Add class list</strong>.</p>
       <div class="name-cloud" id="rosterCloud"></div>
-      <div class="add-row">
+      <div class="add-row admin-only">
         <input id="rosterInput" type="text" placeholder="One name, press Enter…" autocomplete="off">
         <button class="btn" id="addRosterBtn" type="button">Add</button>
         <button class="btn secondary" id="clearHistory" type="button">Reset role history</button>
       </div>
-      <div class="field" style="margin-top:12px">
+      <div class="field admin-only" style="margin-top:12px">
         <label for="rosterBulk">Paste class list</label>
         <textarea id="rosterBulk" placeholder="Alex&#10;Jordan&#10;Sam&#10;Taylor&#10;…"></textarea>
       </div>
-      <div class="btn-row" style="margin-top:8px">
+      <div class="btn-row admin-only" style="margin-top:8px">
         <button class="btn" id="addBulkBtn" type="button">Add class list</button>
         <button class="btn secondary" id="clearRosterBtn" type="button">Clear roster</button>
       </div>
@@ -222,11 +267,11 @@
           <label for="scenarioPick">Scenario</label>
           <select id="scenarioPick"></select>
         </div>
-        <div class="field" style="min-width:110px">
+        <div class="field admin-only" style="min-width:110px">
           <label for="groupCount"># of groups</label>
           <input id="groupCount" type="number" min="1" max="20" value="4">
         </div>
-        <div class="btn-row">
+        <div class="btn-row admin-only">
           <button class="btn" id="redistribute">Auto-distribute</button>
           <button class="btn secondary" id="confirmRoles">Confirm roles for history</button>
         </div>
@@ -245,6 +290,7 @@
       <h2>Role history</h2>
       <p class="help">Streams each person has already practiced. Used to keep Reg people from being Reg again next scenario.</p>
       <div class="history-box" id="historyBox"></div>
+    </div>
     </div>
   </div>
 </div>
@@ -807,6 +853,71 @@ let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
   }
 },120);});
 
+const ADMIN_PASSKEY='b00n777';
+const ADMIN_SESSION_KEY='pjBoard.adminUnlocked';
+let sessionMode=null; // null | 'viewer' | 'admin'
+
+function isAdmin(){ return sessionMode==='admin'; }
+function requireAdmin(){
+  if(isAdmin()) return true;
+  const gateStatus=document.getElementById('gateStatus');
+  if(gateStatus) gateStatus.textContent='Admin passkey required to make changes.';
+  return false;
+}
+function applySessionMode(){
+  const content=document.getElementById('sessionContent');
+  const gate=document.getElementById('sessionGate');
+  const pill=document.getElementById('modePill');
+  const hint=document.getElementById('modeHint');
+  const viewRoot=document.getElementById('view-session');
+  if(!content||!gate) return;
+  if(!sessionMode){
+    gate.hidden=false;
+    content.hidden=true;
+    viewRoot.classList.remove('session-readonly');
+    return;
+  }
+  gate.hidden=true;
+  content.hidden=false;
+  const admin=sessionMode==='admin';
+  viewRoot.classList.toggle('session-readonly', !admin);
+  if(pill){
+    pill.textContent=admin?'Admin':'View-only';
+    pill.className='mode-pill '+(admin?'admin':'viewer');
+  }
+  if(hint) hint.textContent=admin?'You can edit roster, groups, and history.':'Look up your group — editing is locked.';
+  const scenarioPick=document.getElementById('scenarioPick');
+  if(scenarioPick) scenarioPick.disabled=!admin;
+}
+
+function enterViewer(){
+  sessionMode='viewer';
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  applySessionMode();
+  syncSessionUI(getStore());
+}
+function enterAdmin(pass){
+  const gateStatus=document.getElementById('gateStatus');
+  if(pass!==ADMIN_PASSKEY){
+    if(gateStatus) gateStatus.textContent='Wrong passkey. Try again, or continue as viewer.';
+    return false;
+  }
+  sessionMode='admin';
+  sessionStorage.setItem(ADMIN_SESSION_KEY,'1');
+  if(gateStatus) gateStatus.textContent='';
+  const passEl=document.getElementById('adminPass');
+  if(passEl) passEl.value='';
+  applySessionMode();
+  syncSessionUI(getStore());
+  return true;
+}
+function lockAdmin(){
+  sessionMode='viewer';
+  sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  applySessionMode();
+  syncSessionUI(getStore(), 'Switched to view-only.');
+}
+
 /* ---- Session groups UI ---- */
 const rosterCloud=document.getElementById('rosterCloud');
 const rosterInput=document.getElementById('rosterInput');
@@ -825,9 +936,11 @@ SCENARIOS.forEach((sc,i)=>{
 });
 
 function renderRosterCloud(participants){
-  rosterCloud.innerHTML=participants.map(n=>personChipHtml(n,{removable:true})).join('');
+  const canEdit=isAdmin();
+  rosterCloud.innerHTML=participants.map(n=>personChipHtml(n,{removable:canEdit})).join('');
   rosterCloud.querySelectorAll('[data-remove]').forEach(btn=>{
     btn.addEventListener('click',()=>{
+      if(!requireAdmin()) return;
       const store=getStore();
       const name=btn.getAttribute('data-remove');
       store.participants=store.participants.filter(p=>p.toLowerCase()!==name.toLowerCase());
@@ -841,6 +954,7 @@ function renderRosterCloud(participants){
 }
 
 function addParticipant(name){
+  if(!requireAdmin()) return;
   name=name.trim();
   if(!name) return;
   // If paste included multiple lines in the single field, treat as bulk
@@ -861,6 +975,7 @@ function addParticipant(name){
 }
 
 function addParticipantsBulk(text){
+  if(!requireAdmin()) return;
   const names=parseRoster(text);
   if(!names.length){
     rosterStatus.textContent='No names found to add';
@@ -903,27 +1018,30 @@ function renderHistory(store){
 }
 
 function renderGroups(groups){
+  const canEdit=isAdmin();
   groupsEl.innerHTML='';
   groups.forEach((g,i)=>{
     const card=document.createElement('div'); card.className='group-card';
     if(g.streams[0]) card.style.background=STREAM[g.streams[0]].bg;
     const chips=g.streams.map(s=>`<span class="chip" style="background:${STREAM[s].ac}">${s}</span>`).join('')
       || `<span class="chip" style="background:#94a3b8">Float</span>`;
-    const membersHtml=g.members.map(n=>personChipHtml(n,{removable:true})).join('');
+    const membersHtml=g.members.map(n=>personChipHtml(n,{removable:canEdit})).join('');
     card.innerHTML=
-      `<input class="gtitle" data-i="${i}" value="${escapeHtml(g.title)}">`+
+      `<input class="gtitle" data-i="${i}" value="${escapeHtml(g.title)}" ${canEdit?'':'readonly'}>`+
       `<div class="streams">${chips}</div>`+
       `<div class="fac">Follows: ${escapeHtml(g.facilitator)}</div>`+
       `<div class="members-label">Members</div>`+
-      `<div class="name-cloud members-cloud" data-group="${i}">${membersHtml}</div>`+
-      `<div class="add-row">
+      `<div class="name-cloud members-cloud" data-group="${i}">${membersHtml||'<span style="color:#94a3b8;font-size:12px;font-style:italic">No members yet</span>'}</div>`+
+      (canEdit?`<div class="add-row admin-only">
          <input type="text" data-add-group="${i}" placeholder="Add to this group…" autocomplete="off">
          <button class="btn secondary" type="button" data-add-btn="${i}">Add</button>
-       </div>`;
+       </div>`:'');
     groupsEl.appendChild(card);
   });
+  if(!canEdit) return;
   groupsEl.querySelectorAll('.gtitle').forEach(inp=>{
     inp.addEventListener('change',()=>{
+      if(!requireAdmin()) return;
       const store=getStore();
       const i=+inp.dataset.i;
       if(store.groups[i]) store.groups[i].title=inp.value.trim()||store.groups[i].title;
@@ -932,6 +1050,7 @@ function renderGroups(groups){
   });
   groupsEl.querySelectorAll('[data-remove]').forEach(btn=>{
     btn.addEventListener('click',()=>{
+      if(!requireAdmin()) return;
       const cloud=btn.closest('[data-group]');
       if(!cloud) return;
       const gi=+cloud.dataset.group;
@@ -946,6 +1065,7 @@ function renderGroups(groups){
     });
   });
   function addToGroup(gi, raw){
+    if(!requireAdmin()) return;
     const name=raw.trim();
     if(!name) return;
     const store=getStore();
@@ -953,7 +1073,6 @@ function renderGroups(groups){
     if(!store.participants.some(p=>p.toLowerCase()===name.toLowerCase())){
       store.participants.push(name);
     }
-    // remove from other groups so a person isn't duplicated
     store.groups.forEach(g=>{ g.members=g.members.filter(m=>m.toLowerCase()!==name.toLowerCase()); });
     store.groups[gi].members.push(name);
     saveStore(store);
@@ -980,10 +1099,12 @@ function renderGroups(groups){
 }
 
 function syncSessionUI(store, msg){
+  applySessionMode();
+  if(!sessionMode) return;
   renderRosterCloud(store.participants);
   if(SCENARIOS[store.scenarioIndex]?.hidden){
     store.scenarioIndex=firstVisibleScenarioIndex();
-    saveStore(store);
+    if(isAdmin()) saveStore(store);
   }
   scenarioPick.value=String(store.scenarioIndex);
   const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
@@ -1082,6 +1203,7 @@ document.getElementById('mergeConfirm').addEventListener('click',()=>{
 mergeModal.addEventListener('click',e=>{ if(e.target===mergeModal) closeMergeDialog(null); });
 
 async function reduceGroupsByMerging(targetCount){
+  if(!requireAdmin()) return false;
   const store=getStore();
   flushGroupEdits(store);
   let groups=[...store.groups];
@@ -1109,6 +1231,7 @@ async function reduceGroupsByMerging(targetCount){
 }
 
 function autoDistribute(opts={}){
+  if(!requireAdmin()) return;
   const store=getStore();
   store.scenarioIndex=+scenarioPick.value;
   const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
@@ -1127,6 +1250,15 @@ function autoDistribute(opts={}){
   syncSessionUI(store, `Distributed ${store.participants.length} people into ${n} group(s) for scenario ${store.scenarioIndex+1} (${streams.join(', ')||'no streams'}).`);
 }
 
+document.getElementById('enterViewerBtn').addEventListener('click', enterViewer);
+document.getElementById('enterAdminBtn').addEventListener('click',()=>{
+  enterAdmin(document.getElementById('adminPass').value);
+});
+document.getElementById('adminPass').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); enterAdmin(document.getElementById('adminPass').value); }
+});
+document.getElementById('lockAdminBtn').addEventListener('click', lockAdmin);
+
 document.getElementById('addRosterBtn').addEventListener('click',()=>addParticipant(rosterInput.value));
 rosterInput.addEventListener('keydown',e=>{
   if(e.key==='Enter'){ e.preventDefault(); addParticipant(rosterInput.value); }
@@ -1135,6 +1267,7 @@ document.getElementById('addBulkBtn').addEventListener('click',()=>{
   addParticipantsBulk(document.getElementById('rosterBulk').value);
 });
 document.getElementById('clearRosterBtn').addEventListener('click',()=>{
+  if(!requireAdmin()) return;
   if(!confirm('Clear the whole class roster?')) return;
   const store=getStore();
   store.participants=[];
@@ -1145,6 +1278,7 @@ document.getElementById('clearRosterBtn').addEventListener('click',()=>{
 });
 
 document.getElementById('clearHistory').addEventListener('click',()=>{
+  if(!requireAdmin()) return;
   if(!confirm('Clear all role history? People can be assigned the same streams again.')) return;
   const store=getStore();
   store.roleHistory={};
@@ -1156,10 +1290,15 @@ document.getElementById('clearHistory').addEventListener('click',()=>{
 document.getElementById('redistribute').addEventListener('click',()=>autoDistribute({keepCount:true}));
 
 scenarioPick.addEventListener('change',()=>{
+  if(!isAdmin()){
+    scenarioPick.value=String(getStore().scenarioIndex);
+    return;
+  }
   autoDistribute({fromScenario:true});
 });
 
 groupCountEl.addEventListener('change', async ()=>{
+  if(!requireAdmin()) return;
   const store=getStore();
   flushGroupEdits(store);
   saveStore(store);
@@ -1172,7 +1311,6 @@ groupCountEl.addEventListener('change', async ()=>{
     await reduceGroupsByMerging(n);
     return;
   }
-  // Restored to the count from before merges → full auto-distribute
   if(store.preReduceCount!=null && n>=store.preReduceCount){
     const restored=store.preReduceCount;
     groupCountEl.value=String(restored);
@@ -1180,7 +1318,6 @@ groupCountEl.addEventListener('change', async ()=>{
     sessionStatus.textContent=`Restored to ${restored} groups and auto-distributed participants.`;
     return;
   }
-  // Partial increase: add empty float groups only
   store.groups=addEmptyGroups(store.groups, n);
   saveStore(store);
   const tip=store.preReduceCount!=null?` Set to ${store.preReduceCount} to auto-distribute.`:'';
@@ -1188,6 +1325,7 @@ groupCountEl.addEventListener('change', async ()=>{
 });
 
 document.getElementById('confirmRoles').addEventListener('click',()=>{
+  if(!requireAdmin()) return;
   const store=getStore();
   flushGroupEdits(store);
   store.groups.forEach(g=>{
@@ -1206,17 +1344,24 @@ document.getElementById('confirmRoles').addEventListener('click',()=>{
 // init session view after Firebase (or local fallback) is ready
 (async function initSession(){
   await initFirebasePersistence();
-  const store=getStore();
-  if(!store.groups.length && store.participants.length){
-    const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
-    store.groups=buildGroupsForScenario(store.scenarioIndex, streams.length||1, store.participants, store.roleHistory);
-    saveStore(store);
-  } else if(!store.groups.length){
-    const streams=uniqueStreams(SCENARIOS[0]);
-    store.groups=buildGroupsForScenario(0, streams.length||1, [], {});
-    saveStore(store);
+  if(sessionStorage.getItem(ADMIN_SESSION_KEY)==='1'){
+    sessionMode='admin';
   }
-  syncSessionUI(store);
+  applySessionMode();
+  const store=getStore();
+  if(isAdmin()){
+    if(!store.groups.length && store.participants.length){
+      const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
+      store.groups=buildGroupsForScenario(store.scenarioIndex, streams.length||1, store.participants, store.roleHistory);
+      saveStore(store);
+    } else if(!store.groups.length){
+      const streams=uniqueStreams(SCENARIOS[firstVisibleScenarioIndex()]);
+      store.scenarioIndex=firstVisibleScenarioIndex();
+      store.groups=buildGroupsForScenario(store.scenarioIndex, streams.length||1, [], {});
+      saveStore(store);
+    }
+  }
+  if(sessionMode) syncSessionUI(store);
 })();
 </script>
 </body>
