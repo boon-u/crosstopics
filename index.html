@@ -56,14 +56,50 @@
   .note .meta{opacity:.9;line-height:1.25;margin-top:1px}
   .note .pill{align-self:flex-start;margin-top:auto;font-weight:800;
               letter-spacing:.3px;color:#fff;border-radius:999px;padding:3px 8px}
-  .note.done{outline:2px solid #16a34a;box-shadow:0 8px 15px rgba(22,163,74,.2)}
-  .note.done .lbl{text-decoration:line-through;opacity:.8}
-  .note .done-row{
-    display:flex;align-items:center;gap:5px;margin-top:2px;
-    font-size:10.5px;font-weight:800;color:#64748b;user-select:none;
+  .note.done{
+    outline:2px solid #16a34a;
+    box-shadow:0 10px 22px rgba(22,163,74,.28);
   }
-  .note .done-row input{width:13px;height:13px;accent-color:#16a34a;flex-shrink:0}
-  .note.done .done-row{color:#166534}
+  .note.done .lbl{text-decoration:line-through;opacity:.78}
+  .note.done .emj{filter:grayscale(.15);transform:scale(.92)}
+  .note .done-stamp{
+    align-self:flex-start;margin-top:4px;border:2px dashed #94a3b8;background:rgba(255,255,255,.55);
+    color:#64748b;border-radius:999px;padding:3px 9px 3px 6px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:10.5px;font-weight:800;
+    transition:transform .15s ease, border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .note .done-stamp:hover{transform:scale(1.06);border-color:#16a34a;color:#166534}
+  .note .done-stamp:disabled{cursor:default;opacity:.95}
+  .note .done-stamp .stamp-mark{
+    width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
+    background:#e2e8f0;color:#64748b;font-size:11px;line-height:1;
+    transition:transform .25s cubic-bezier(.2,1.4,.3,1), background .2s ease, color .2s ease;
+  }
+  .note .done-stamp.is-done{
+    border-style:solid;border-color:#16a34a;background:#dcfce7;color:#166534;
+  }
+  .note .done-stamp.is-done .stamp-mark{background:#16a34a;color:#fff;transform:scale(1.08) rotate(-8deg)}
+  .note.celebrating{animation:note-pop .55s cubic-bezier(.2,1.3,.3,1)}
+  .note.celebrating .done-stamp .stamp-mark{animation:stamp-slam .45s cubic-bezier(.2,1.6,.3,1)}
+  @keyframes note-pop{
+    0%{transform:scale(1) rotate(var(--rot,0deg))}
+    40%{transform:scale(1.08) rotate(0deg)}
+    100%{transform:scale(1) rotate(0deg)}
+  }
+  @keyframes stamp-slam{
+    0%{transform:scale(2.2) rotate(-25deg);opacity:.2}
+    70%{transform:scale(.9) rotate(-6deg);opacity:1}
+    100%{transform:scale(1.08) rotate(-8deg)}
+  }
+  .confetti-layer{position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden}
+  .confetti-bit{
+    position:fixed;width:7px;height:9px;border-radius:2px;
+    animation:confetti-fly .95s cubic-bezier(.15,.75,.25,1) forwards;
+  }
+  @keyframes confetti-fly{
+    0%{transform:translate3d(0,0,0) rotate(0deg);opacity:1}
+    100%{transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot));opacity:0}
+  }
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
 
   /* Session groups */
@@ -290,7 +326,7 @@
 
     <div class="panel">
       <h2>Scenario journey</h2>
-      <p class="help">Same sticky-note diagram as the Journey Board. Tick <strong>Done</strong> on a card when that step is finished (admin only) — everyone else sees it update.</p>
+      <p class="help">Same sticky-note diagram as the Journey Board. Admins tap the stamp on a card when that step is finished — it celebrates and syncs for everyone.</p>
       <div id="sessionBoard"></div>
     </div>
 
@@ -762,15 +798,62 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
 
 function stepKey(si, stepIdx){ return si+':'+stepIdx; }
 
-function setStepDone(si, stepIdx, done){
+function burstConfetti(anchorEl){
+  const layer=document.createElement('div');
+  layer.className='confetti-layer';
+  document.body.appendChild(layer);
+  const rect=anchorEl.getBoundingClientRect();
+  const cx=rect.left+rect.width/2;
+  const cy=rect.top+rect.height*0.35;
+  const colors=['#f43f5e','#f59e0b','#22c55e','#3b82f6','#a855f7','#ec4899','#14b8a6','#eab308'];
+  for(let i=0;i<30;i++){
+    const p=document.createElement('div');
+    p.className='confetti-bit';
+    const angle=(Math.PI*2*i)/30+(Math.random()*0.35-0.17);
+    const dist=42+Math.random()*100;
+    p.style.left=cx+'px';
+    p.style.top=cy+'px';
+    p.style.background=colors[i%colors.length];
+    p.style.setProperty('--dx',(Math.cos(angle)*dist)+'px');
+    p.style.setProperty('--dy',(Math.sin(angle)*dist+35+Math.random()*55)+'px');
+    p.style.setProperty('--rot',(Math.random()*520-260)+'deg');
+    p.style.width=(5+Math.random()*5)+'px';
+    p.style.height=(6+Math.random()*7)+'px';
+    layer.appendChild(p);
+  }
+  setTimeout(()=>layer.remove(),1100);
+}
+
+function celebrateDone(noteEl){
+  if(!noteEl) return;
+  noteEl.classList.add('done','celebrating');
+  const stamp=noteEl.querySelector('.done-stamp');
+  if(stamp){
+    stamp.classList.add('is-done');
+    const label=stamp.querySelector('.stamp-label');
+    const mark=stamp.querySelector('.stamp-mark');
+    if(label) label.textContent='Done!';
+    if(mark) mark.textContent='✓';
+  }
+  burstConfetti(noteEl);
+  setTimeout(()=>noteEl.classList.remove('celebrating'),600);
+}
+
+function setStepDone(si, stepIdx, done, noteEl){
   if(!requireAdmin()) return false;
   const store=getStore();
   if(!store.doneSteps) store.doneSteps={};
   const k=stepKey(si, stepIdx);
+  const was=!!store.doneSteps[k];
   if(done) store.doneSteps[k]=true;
   else delete store.doneSteps[k];
   saveStore(store);
-  syncSessionUI(store);
+  if(done && !was && noteEl){
+    celebrateDone(noteEl);
+    setTimeout(()=>syncSessionUI(store), 700);
+  } else {
+    syncSessionUI(store);
+  }
   return true;
 }
 
@@ -784,7 +867,7 @@ function renderScenarioInto(target, sc, si, opts={}){
   const avail=Math.max(360, target.clientWidth - 34);
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
-  const cardH=Math.max(groups?200:180, Math.round(cardW*(groups?1.36:1.26)));
+  const cardH=Math.max(groups?204:184, Math.round(cardW*(groups?1.38:1.28)));
   const topPad=44;
   const bottomPad=28;
   const oscil=Math.round(cardH*0.38);
@@ -828,6 +911,7 @@ function renderScenarioInto(target, sc, si, opts={}){
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
       note.style.minHeight=cardH+'px'; note.style.background=s.bg;
       note.style.transform=`rotate(${rot}deg)`;
+      note.style.setProperty('--rot', rot+'deg');
       let groupMeta='';
       if(g){
         const faces=g.members.slice(0,3).map(nm=>
@@ -838,11 +922,11 @@ function renderScenarioInto(target, sc, si, opts={}){
           `<div class="meta" style="font-size:${fMeta}px;font-weight:800">Group: ${escapeHtml(g.title.replace(/^Group \d+ — /,''))}</div>`+
           `<div style="display:flex;gap:2px;align-items:center;margin:2px 0">${faces}${extra}</div>`;
       }
-      const doneRow=trackDone
-        ? `<label class="done-row" style="font-size:${Math.max(9,fPill)}px">`+
-            `<input type="checkbox" ${done?'checked':''} ${canEdit?'':'disabled'} aria-label="Mark step done">`+
-            `<span>${done?'Done':'Done?'}</span>`+
-          `</label>`
+      const doneBtn=trackDone
+        ? `<button type="button" class="done-stamp${done?' is-done':''}" style="font-size:${Math.max(9,fPill)}px" aria-pressed="${done?'true':'false'}" aria-label="${done?'Mark step not done':'Mark step done'}">`+
+            `<span class="stamp-mark">${done?'✓':'○'}</span>`+
+            `<span class="stamp-label">${done?'Done!':'Stamp'}</span>`+
+          `</button>`
         : '';
       note.innerHTML=
         `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
@@ -851,22 +935,16 @@ function renderScenarioInto(target, sc, si, opts={}){
         `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
         (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
         groupMeta+
-        doneRow+
+        doneBtn+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
       if(trackDone){
-        const cb=note.querySelector('input[type=checkbox]');
-        if(canEdit){
-          cb.addEventListener('click',e=>e.stopPropagation());
-          cb.addEventListener('change',e=>{
-            e.stopPropagation();
-            if(!setStepDone(si, thisStep, cb.checked)) cb.checked=!cb.checked;
-          });
-        } else {
-          note.querySelector('.done-row').addEventListener('click',e=>{
-            e.preventDefault(); e.stopPropagation();
-            requireAdmin();
-          });
-        }
+        const btn=note.querySelector('.done-stamp');
+        btn.addEventListener('click',e=>{
+          e.preventDefault();
+          e.stopPropagation();
+          if(!canEdit){ requireAdmin(); return; }
+          setStepDone(si, thisStep, !done, note);
+        });
       }
       canvas.appendChild(note);
     }
