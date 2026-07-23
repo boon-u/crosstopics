@@ -872,6 +872,9 @@ function celebrateDone(noteEl, cheer){
   const stamp=noteEl.querySelector('.done-stamp');
   if(stamp){
     stamp.classList.add('is-done');
+    stamp.setAttribute('aria-pressed','true');
+    stamp.setAttribute('aria-label','Undo done (admin)');
+    stamp.title='Click again to undo';
     const label=stamp.querySelector('.stamp-label');
     const mark=stamp.querySelector('.stamp-mark');
     if(label) label.textContent=cheer||randomCheer();
@@ -881,21 +884,45 @@ function celebrateDone(noteEl, cheer){
   setTimeout(()=>noteEl.classList.remove('celebrating'),600);
 }
 
+function clearDoneVisual(noteEl){
+  if(!noteEl) return;
+  noteEl.classList.remove('done','celebrating');
+  const stamp=noteEl.querySelector('.done-stamp');
+  if(stamp){
+    stamp.classList.remove('is-done');
+    stamp.setAttribute('aria-pressed','false');
+    stamp.setAttribute('aria-label','Mark step done');
+    stamp.title='';
+    const label=stamp.querySelector('.stamp-label');
+    const mark=stamp.querySelector('.stamp-mark');
+    if(label) label.textContent='Done?';
+    if(mark) mark.textContent='○';
+  }
+}
+
+function withPreservedScroll(fn){
+  const x=window.scrollX, y=window.scrollY;
+  fn();
+  // Restore after layout (and again next frame in case fonts/images shift)
+  window.scrollTo(x, y);
+  requestAnimationFrame(()=>window.scrollTo(x, y));
+}
+
 function setStepDone(si, stepIdx, done, noteEl){
   if(!requireAdmin()) return false;
   const store=getStore();
   if(!store.doneSteps) store.doneSteps={};
   const k=stepKey(si, stepIdx);
   const was=!!store.doneSteps[k];
+  if(!!done===was) return true;
   if(done) store.doneSteps[k]=true;
   else delete store.doneSteps[k];
   saveStore(store);
-  if(done && !was && noteEl){
-    const cheer=randomCheer();
-    celebrateDone(noteEl, cheer);
-    setTimeout(()=>syncSessionUI(store), 700);
-  } else {
-    syncSessionUI(store);
+
+  // Stay on this card: update in place (no full-page re-render / scroll jump)
+  if(noteEl){
+    if(done) celebrateDone(noteEl, randomCheer());
+    else clearDoneVisual(noteEl);
   }
   return true;
 }
@@ -982,11 +1009,17 @@ function renderScenarioInto(target, sc, si, opts={}){
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
       if(trackDone){
         const btn=note.querySelector('.done-stamp');
+        if(done){
+          btn.title=canEdit?'Click again to undo':'';
+        }
         btn.addEventListener('click',e=>{
           e.preventDefault();
           e.stopPropagation();
-          if(!canEdit){ requireAdmin(); return; }
-          setStepDone(si, thisStep, !done, note);
+          if(!isAdmin()){ requireAdmin(); return; }
+          btn.blur();
+          // Read live state (closure `done` goes stale after first tap)
+          const currentlyDone=note.classList.contains('done') || !!getStore().doneSteps?.[stepKey(si, thisStep)];
+          setStepDone(si, thisStep, !currentlyDone, note);
         });
       }
       canvas.appendChild(note);
@@ -1289,24 +1322,26 @@ function renderGroups(groups){
 }
 
 function syncSessionUI(store, msg){
-  applySessionMode();
-  renderRosterCloud(store.participants);
-  if(SCENARIOS[store.scenarioIndex]?.hidden){
-    store.scenarioIndex=firstVisibleScenarioIndex();
-    if(isAdmin()) saveStore(store);
-  }
-  scenarioPick.value=String(store.scenarioIndex);
-  const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
-  if(!store.groups.length){
-    groupCountEl.value=String(Math.max(1, streams.length));
-  } else {
-    groupCountEl.value=String(store.groups.length);
-  }
-  renderGroups(store.groups);
-  renderSessionScenario(store.scenarioIndex, store.groups);
-  if(document.getElementById('view-board').classList.contains('active')) render();
-  renderHistory(store);
-  if(msg) sessionStatus.textContent=msg;
+  withPreservedScroll(()=>{
+    applySessionMode();
+    renderRosterCloud(store.participants);
+    if(SCENARIOS[store.scenarioIndex]?.hidden){
+      store.scenarioIndex=firstVisibleScenarioIndex();
+      if(isAdmin()) saveStore(store);
+    }
+    scenarioPick.value=String(store.scenarioIndex);
+    const streams=uniqueStreams(SCENARIOS[store.scenarioIndex]);
+    if(!store.groups.length){
+      groupCountEl.value=String(Math.max(1, streams.length));
+    } else {
+      groupCountEl.value=String(store.groups.length);
+    }
+    renderGroups(store.groups);
+    renderSessionScenario(store.scenarioIndex, store.groups);
+    if(document.getElementById('view-board').classList.contains('active')) render();
+    renderHistory(store);
+    if(msg) sessionStatus.textContent=msg;
+  });
 }
 
 function flushGroupEdits(store){
