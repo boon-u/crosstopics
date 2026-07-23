@@ -1214,7 +1214,7 @@ function setStepDone(si, stepIdx, wantDone, noteEl){
   return true;
 }
 
-const JOURNEY_GUIDE={name:'Lisa', emoji:'👩‍⚕️'};
+const JOURNEY_GUIDE={name:'Lisa', emoji:'👩'};
 
 function firstUndoneStep(si, doneSteps){
   const sc=SCENARIOS[si];
@@ -1227,7 +1227,7 @@ function firstUndoneStep(si, doneSteps){
 }
 
 function lisaTrackerHtml(){
-  return `<div class="lisa-tracker" title="${JOURNEY_GUIDE.name} is here — next step on the journey" aria-hidden="true">`+
+  return `<div class="lisa-tracker" title="${JOURNEY_GUIDE.name} (patient) is here — next step on her journey" aria-hidden="true">`+
     `<span class="lisa-emoji">${JOURNEY_GUIDE.emoji}</span>`+
     `<span class="lisa-name">${JOURNEY_GUIDE.name}</span>`+
     `<span class="lisa-arrow">▼</span>`+
