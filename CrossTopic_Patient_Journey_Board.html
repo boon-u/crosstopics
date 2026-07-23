@@ -542,7 +542,7 @@
   <div class="name-gate-card" role="dialog" aria-labelledby="nameGateTitle">
     <div style="font-size:36px;margin-bottom:8px">✍️</div>
     <h3 id="nameGateTitle">Who earned this?</h3>
-    <p>Pick your name from today’s class — or type it if you don’t see it.</p>
+    <p>Tap your name to get your certificate. Don’t see it? Type below.</p>
     <div class="name-pick" id="namePickList"></div>
     <div class="name-gate-or">or type your name</div>
     <input id="nameGateInput" type="text" maxlength="48" placeholder="Your name" autocomplete="name">
@@ -1285,10 +1285,9 @@ function openNameGate(){
       : `<span class="muted" style="font-size:13px">No roster yet — type your name below.</span>`;
     pick.querySelectorAll('.name-pick-btn').forEach(btn=>{
       btn.addEventListener('click',()=>{
-        pick.querySelectorAll('.name-pick-btn').forEach(b=>b.classList.remove('selected'));
-        btn.classList.add('selected');
-        if(inp) inp.value=btn.dataset.name||btn.textContent;
-        if(status) status.textContent='';
+        const name=(btn.dataset.name||btn.textContent||'').trim();
+        if(!name) return;
+        openCertificate(name);
       });
     });
   }
