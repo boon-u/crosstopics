@@ -498,13 +498,13 @@
 
     <div class="panel">
       <h2>Scenario journey</h2>
-      <p class="help">Same sticky-note diagram as the Journey Board. Admins mark each step <strong>Done?</strong> as the class finishes it. When the full trauma journey is complete, everyone can claim their certificate.</p>
+      <p class="help">Same sticky-note diagram as the Journey Board. Admins mark each step <strong>Done?</strong> as the class finishes it. When every card across today’s visible journeys is done, everyone can claim their certificate.</p>
       <div id="sessionBoard"></div>
       <div class="cert-banner" id="certBanner">
         <div class="cert-hero">🏆</div>
         <div>
           <strong>You finished the patient journey!</strong>
-          <p class="cert-sub">Grab your personal CIS expert certificate — one tap, type your name, confetti time.</p>
+          <p class="cert-sub">Grab your personal Cross-Topics CIS certificate — tap your name and celebrate.</p>
         </div>
         <button class="btn-cert" type="button" id="getCertBtn">Get my certificate ✨</button>
       </div>
@@ -568,11 +568,10 @@
           <span class="who-display" id="certNameDisplay">—</span>
         </div>
         <p class="cert-body">
-          has successfully completed the full patient journey
-          <b id="certScenarioTitle">—</b>
-          on the <b>Patient Journey Board</b> and is now recognized as an expert in
+          has successfully completed today’s cross-topics patient journeys
+          on the <b>Patient Journey Board</b> and is now recognized as a
         </p>
-        <p class="cert-expert">Cerner CIS · cross-stream patient flow</p>
+        <p class="cert-expert">Cross-Topics CIS Practitioner</p>
         <div class="cert-streams" id="certStreams"></div>
         <div class="cert-date"><span style="font-weight:600">Date:</span> <span id="certDate"></span></div>
         <div class="cert-seal" title="Officially awesome">⭐</div>
@@ -1200,13 +1199,23 @@ function scenarioStreams(si){
   return out;
 }
 
-// The classroom runs one scenario — the last one (MVA Trauma journey)
-function certScenarioIndex(){
-  return SCENARIOS.length-1;
+// Certificate unlocks when every visible scenario (e.g. MHA + MVA) is fully done
+function certScenarioIndexes(){
+  return visibleScenarios().map(x=>x.i);
 }
 
 function isJourneyComplete(doneSteps){
-  return isScenarioFullyDone(certScenarioIndex(), doneSteps);
+  const idxs=certScenarioIndexes();
+  if(!idxs.length) return false;
+  return idxs.every(si=>isScenarioFullyDone(si, doneSteps));
+}
+
+function allCertStreams(){
+  const seen=new Set(); const out=[];
+  certScenarioIndexes().forEach(si=>{
+    scenarioStreams(si).forEach(k=>{ if(!seen.has(k)){ seen.add(k); out.push(k); } });
+  });
+  return out;
 }
 
 function isScenarioFullyDone(si, doneSteps){
@@ -1248,13 +1257,9 @@ function startCertRain(){
 }
 
 function fillCertificate(name){
-  const si=certScenarioIndex();
-  const sc=SCENARIOS[si];
-  if(!sc) return;
-  const streams=scenarioStreams(si);
-  document.getElementById('certScenarioTitle').textContent=sc.title;
+  const streams=allCertStreams();
   document.getElementById('certDate').textContent=formatCertDate();
-  document.getElementById('certMascot').textContent=CERT_MASCOTS[si%CERT_MASCOTS.length];
+  document.getElementById('certMascot').textContent='🗺️';
   document.getElementById('certNameDisplay').textContent=name;
   const streamEl=document.getElementById('certStreams');
   streamEl.innerHTML=streams.map(k=>{
@@ -1262,11 +1267,7 @@ function fillCertificate(name){
     return `<span class="chip" style="background:${s?s.ac:'#64748b'}">${escapeHtml(k)} · ${escapeHtml(s?s.name:k)}</span>`;
   }).join('');
   const expert=document.querySelector('.cert-expert');
-  if(expert){
-    expert.textContent=streams.length>=4
-      ? `Cerner CIS · expert across ${streams.length} streams`
-      : 'Cerner CIS · cross-stream patient flow';
-  }
+  if(expert) expert.textContent='Cross-Topics CIS Practitioner';
 }
 
 function openNameGate(){
