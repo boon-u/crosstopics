@@ -85,25 +85,25 @@
   .note.celebrating{animation:note-pop .55s cubic-bezier(.2,1.3,.3,1)}
   .note.celebrating .done-stamp .stamp-mark{animation:stamp-slam .45s cubic-bezier(.2,1.6,.3,1)}
   .lisa-tracker{
-    position:absolute;top:-30px;left:50%;transform:translateX(-50%);
-    z-index:8;pointer-events:none;
-    display:flex;flex-direction:column;align-items:center;gap:2px;
-    animation:lisa-bob 1.45s ease-in-out infinite;
+    position:absolute;top:-42px;left:50%;transform:translateX(-50%);
+    z-index:12;pointer-events:none;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    animation:lisa-bob 1.35s ease-in-out infinite;
   }
   .lisa-tracker .lisa-emoji{
-    font-size:28px;line-height:1;
-    filter:drop-shadow(0 4px 8px rgba(15,23,42,.22));
+    font-size:42px;line-height:1;
+    filter:drop-shadow(0 6px 12px rgba(15,23,42,.28));
   }
   .lisa-tracker .lisa-name{
-    font-size:9px;font-weight:800;color:#9d174d;letter-spacing:.2px;
-    background:#fce7f3;border:1px solid #f9a8d4;border-radius:999px;
-    padding:1px 7px;white-space:nowrap;
-    box-shadow:0 2px 6px rgba(190,24,93,.12);
+    font-size:11px;font-weight:800;color:#fff;letter-spacing:.3px;
+    background:#db2777;border:2px solid #fff;border-radius:999px;
+    padding:2px 10px;white-space:nowrap;
+    box-shadow:0 4px 12px rgba(190,24,93,.35);
   }
-  .lisa-tracker .lisa-arrow{font-size:10px;line-height:1;color:#db2777;margin-top:-2px}
+  .lisa-tracker .lisa-arrow{font-size:14px;line-height:1;color:#db2777;margin-top:-1px;font-weight:900}
   @keyframes lisa-bob{
-    0%,100%{transform:translateX(-50%) translateY(0)}
-    50%{transform:translateX(-50%) translateY(-7px)}
+    0%,100%{transform:translateX(-50%) translateY(0) scale(1)}
+    50%{transform:translateX(-50%) translateY(-10px) scale(1.06)}
   }
   @keyframes note-pop{
     0%{transform:scale(1) rotate(var(--rot,0deg))}
@@ -1429,7 +1429,7 @@ function renderScenarioInto(target, sc, si, opts={}){
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
   const cardH=Math.max(groups?204:184, Math.round(cardW*(groups?1.38:1.28)));
-  const topPad=trackDone?56:44;
+  const topPad=trackDone?68:44;
   const bottomPad=28;
   const oscil=Math.round(cardH*0.38);
   const rowH=topPad + cardH + oscil + bottomPad;
