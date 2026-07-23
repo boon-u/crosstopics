@@ -798,6 +798,19 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
 
 function stepKey(si, stepIdx){ return si+':'+stepIdx; }
 
+const DONE_CHEERS=[
+  'Phew 😮‍💨','Sigh 😌','Yayy 🎉','Hooray 🥳','Woohoo ✨','Nice 🙌','Crushin’ it 💪','All set ✅'
+];
+function randomCheer(){
+  return DONE_CHEERS[Math.floor(Math.random()*DONE_CHEERS.length)];
+}
+function cheerForKey(key){
+  // Stable cheer per step so remotes/reloads don't flicker random labels
+  let h=0; const s=String(key);
+  for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0;
+  return DONE_CHEERS[h%DONE_CHEERS.length];
+}
+
 function burstConfetti(anchorEl){
   const layer=document.createElement('div');
   layer.className='confetti-layer';
@@ -824,7 +837,7 @@ function burstConfetti(anchorEl){
   setTimeout(()=>layer.remove(),1100);
 }
 
-function celebrateDone(noteEl){
+function celebrateDone(noteEl, cheer){
   if(!noteEl) return;
   noteEl.classList.add('done','celebrating');
   const stamp=noteEl.querySelector('.done-stamp');
@@ -832,7 +845,7 @@ function celebrateDone(noteEl){
     stamp.classList.add('is-done');
     const label=stamp.querySelector('.stamp-label');
     const mark=stamp.querySelector('.stamp-mark');
-    if(label) label.textContent='Done!';
+    if(label) label.textContent=cheer||randomCheer();
     if(mark) mark.textContent='✓';
   }
   burstConfetti(noteEl);
@@ -849,7 +862,8 @@ function setStepDone(si, stepIdx, done, noteEl){
   else delete store.doneSteps[k];
   saveStore(store);
   if(done && !was && noteEl){
-    celebrateDone(noteEl);
+    const cheer=randomCheer();
+    celebrateDone(noteEl, cheer);
     setTimeout(()=>syncSessionUI(store), 700);
   } else {
     syncSessionUI(store);
@@ -925,7 +939,7 @@ function renderScenarioInto(target, sc, si, opts={}){
       const doneBtn=trackDone
         ? `<button type="button" class="done-stamp${done?' is-done':''}" style="font-size:${Math.max(9,fPill)}px" aria-pressed="${done?'true':'false'}" aria-label="${done?'Mark step not done':'Mark step done'}">`+
             `<span class="stamp-mark">${done?'✓':'○'}</span>`+
-            `<span class="stamp-label">${done?'Done!':'Stamp'}</span>`+
+            `<span class="stamp-label">${done?escapeHtml(cheerForKey(stepKey(si, thisStep))):'Done?'}</span>`+
           `</button>`
         : '';
       note.innerHTML=
