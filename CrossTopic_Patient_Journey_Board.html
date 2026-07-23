@@ -799,7 +799,36 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
 function stepKey(si, stepIdx){ return si+':'+stepIdx; }
 
 const DONE_CHEERS=[
-  'Phew 😮‍💨','Sigh 😌','Yayy 🎉','Hooray 🥳','Woohoo ✨','Nice 🙌','Crushin’ it 💪','All set ✅'
+  'Phew 😮‍💨','Sigh 😌','Yayy 🎉','Hooray 🥳','Woohoo ✨','Nice 🙌','Crushin’ it 💪','All set ✅',
+  'Nailed it 🎯','Boom 💥','Chef’s kiss 😘','High five ✋','Let’s gooo 🚀','Victory 🏆','Legend 😎',
+  'Smooth 🧈','Easy peasy 🍋','Donezo ✔️','Checked off ☑️','Mic drop 🎤','Fire 🔥','Sparkle 🌟',
+  'Awesome 🤩','Fantastic 🌈','Brilliant 💡','Perfect 👌','Great job 👏','You rock 🎸','Boss move 👑',
+  'Clean sweep 🧹','Wrapped up 🎁','In the bag 🛍️','Sorted 🧩','Locked in 🔐','Gold star ⭐',
+  'Party time 🎊','Confetti 🎉','Dance break 💃','Happy dance 🕺','Celebrate 🍾','Cheers 🥂',
+  'Sweet 🍬','Cool beans 🫘','Rad 🏄','Epic 🌋','Stellar 🌠','Buzzing 🐝','On a roll 🎢',
+  'Progress 📈','Level up 🆙','Quest complete 🗺️','Achievement unlocked 🏅','Mission success 🛰️',
+  'Big win 🏁','Touchdown 🏈','Home run ⚾','Goal ⚽','Bingo 🎱','Jackpot 🎰','Lucky 🍀',
+  'Relief 😅','Finally 🙌','That was fun 😄','Feeling good 😊','Smile 😁','Grin 😃','Happy heart 💖',
+  'Sunshine ☀️','Rainbow 🌈','Unicorn vibes 🦄','Magic 🪄','Zap ⚡','Kaboom 💣','Pow 🥊',
+  'Thumbs up 👍','Double thumbs 👍👍','Fist bump 👊','Hug 🤗','Heart eyes 😍','Starstruck 🤩',
+  'Keep going ➡️','One down 1️⃣','Next! ⏭️','Onward 🧭','Momentum 🌀','Flow state 🌊',
+  'Teamwork 🤝','Proud 🥹','Grateful 🙏','Blessed 😇','Zen 🧘','Chill 🧊','Breathe 🌬️',
+  'Coffee break? ☕','Snack time 🍪','Treat yourself 🧁','Ice cream 🍦','Pizza party 🍕','Tacos 🌮',
+  'Slayed 🗡️','Ate that 🍽️','No notes 📝','Flawless 💎','Iconic 📸','Main character 🎬',
+  'Plot twist: done 📖','Chapter closed 📕','Box ticked 📦','Stamp approved 💮','Seal the deal 🦭',
+  'We did it 🫶','Us! 👯‍♂️','Class win 🏫','Clinic champ 🩺','Cerner hero 💻','Build complete 🛠️',
+  'Ship it 🚢','Deployed 🚀','Green check 🟢','Status: done 📡','Queue cleared 🧹','Backlog bite 🍪',
+  'Tiny win 🐣','Big energy ⚡','Soft landing 🪂','Safe landing ✈️','Splashdown 🌊','Touch grass 🌱',
+  'Good vibes ✌️','Peace out step ☮️','Bye bye task 👋','See ya later 👋','Hasta luego 🌮','Au revoir 🥖',
+  'Bravo 🎭','Encore 🎶','Standing O 👏','Curtain call 🎭','Spotlight 🔦','Encore vibes 🎤',
+  'Yippee 🎈','Yeehaw 🤠','Huzzah ⚔️','Olé 💃','Banzai 🎌','Mazel tov ✡️',
+  'Wowza 😮','Whoa 😳','Dang 😮','Sheesh 🥶','Bet 🫡','Facts 🗣️','No cap 🧢',
+  'Giggles 🤭','Hehe 😜','Lol 😂','Lmao 🤣','Teehee 🙈','Chuckle 😄',
+  'Warm fuzzies 🧸','Cozy win 🧣','Snug 🛏️','Comfy 🧦','Blankie vibes 🛏️',
+  'Brain go brrr 🧠','Smart cookie 🍪','Genius hour 🧪','Science! 🔬','Eureka 💡',
+  'Patient journey FTW 🗺️','Handoff complete 🤝','Stream cleared 🏊','Lane finished 🛣️','Path paved 🧱',
+  'Reg pride 💙','ED energy ❤️','Lab glow 💚','DI sparkle 💜','Nursing care 🩵','MHA strength 🧡',
+  'Almost there… done! 🏁','Last mile 🏃‍♀️','Crossed the line 🏁','Ribbon cut 🎀','Tape break 🏁',
 ];
 function randomCheer(){
   return DONE_CHEERS[Math.floor(Math.random()*DONE_CHEERS.length)];
