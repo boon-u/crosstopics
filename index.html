@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Patient Journey Board — Cerner CIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#0f172a; --muted:#64748b;
@@ -101,6 +104,94 @@
     100%{transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot));opacity:0}
   }
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
+
+  /* Fun completion certificate (Registration Trail vibes) */
+  .cert-back{
+    position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
+    padding:24px 16px;background:linear-gradient(165deg,#e6f7f4 0%,#fbfbfd 42%,#fff6df 100%);
+    overflow:auto;
+  }
+  .cert-back.open{display:flex}
+  .cert-rain{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:81}
+  .cert-rain span{
+    position:absolute;top:-8vh;line-height:1;animation:cert-rain-fall linear forwards;
+  }
+  @keyframes cert-rain-fall{
+    0%{transform:translateY(-10vh) translateX(0) rotate(0deg);opacity:1}
+    100%{transform:translateY(110vh) translateX(var(--drift,0px)) rotate(360deg);opacity:.85}
+  }
+  .cert-shell{
+    position:relative;z-index:82;width:100%;max-width:560px;
+    opacity:0;transform:translateY(24px) scale(.97);
+    transition:opacity .85s ease, transform .85s cubic-bezier(.34,1.2,.5,1);
+  }
+  .cert-back.open .cert-shell.show{opacity:1;transform:translateY(0) scale(1)}
+  .cert-frame{
+    background:#fff;border-radius:20px;padding:10px;
+    box-shadow:0 20px 60px rgba(20,40,60,.12),0 0 0 1px rgba(242,181,59,.35);
+  }
+  .cert-paper{
+    border:3px double #f2b53b;border-radius:14px;padding:36px 28px 32px;
+    background:linear-gradient(180deg,#FFFEF9 0%,#FFFDF6 100%);
+    text-align:center;font-family:"Segoe UI",system-ui,sans-serif;
+  }
+  .cert-kicker{
+    font-family:"Baloo 2",system-ui,sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:2.5px;color:#0e9c8a;margin:0 0 6px;
+  }
+  .cert-title{
+    font-family:"Baloo 2",system-ui,sans-serif;font-size:clamp(28px,5vw,36px);
+    color:#0f172a;margin:0 0 6px;line-height:1.15;font-weight:800;
+  }
+  .cert-rule{width:72px;height:3px;background:#f2b53b;margin:0 auto 22px;border-radius:2px}
+  .cert-lede{margin:0 0 18px;color:#4a5c70;font-size:15px;line-height:1.55}
+  .cert-name-pill{
+    display:inline-flex;align-items:center;gap:12px;margin-bottom:20px;
+    padding:10px 22px;border-radius:999px;background:#e6f7f4;border:2px solid #0e9c8a;
+  }
+  .cert-name-pill .mascot{font-size:40px;line-height:1}
+  .cert-name-pill .who{
+    font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:clamp(20px,4vw,28px);color:#0f172a;
+    border:0;background:transparent;text-align:center;min-width:8ch;max-width:260px;
+  }
+  .cert-name-pill .who:focus{outline:2px solid #0e9c8a44;border-radius:8px}
+  .cert-body{margin:0 0 8px;color:#0f172a;font-size:16px;line-height:1.65;max-width:420px;margin-left:auto;margin-right:auto}
+  .cert-expert{
+    margin:0 0 16px;font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;
+    font-size:clamp(18px,3.5vw,22px);color:#0e9c8a;letter-spacing:.3px;
+  }
+  .cert-streams{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 22px}
+  .cert-streams .chip{font-size:12px;padding:4px 10px}
+  .cert-date{
+    display:inline-block;padding:8px 20px;border-radius:10px;
+    border:1px solid #e2e8f0;background:#f8fafc;font-size:14px;color:#4a5c70;
+  }
+  .cert-seal{
+    margin:28px auto 0;width:64px;height:64px;border-radius:50%;
+    background:#fff6df;border:3px solid #f2b53b;display:grid;place-items:center;
+    font-size:28px;box-shadow:inset 0 2px 8px rgba(242,181,59,.25);
+  }
+  .cert-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .cert-actions .btn{flex:1;min-width:140px;justify-content:center}
+  .cert-banner{
+    display:none;align-items:center;gap:10px;flex-wrap:wrap;
+    margin:12px 0 0;padding:12px 14px;border-radius:14px;
+    background:linear-gradient(135deg,#fff6df,#e6f7f4);border:1px solid #f2b53b55;
+  }
+  .cert-banner.show{display:flex}
+  .cert-banner strong{font-family:"Baloo 2",system-ui,sans-serif;font-size:15px;color:#0f172a}
+
+  @media print{
+    body *{visibility:hidden!important}
+    .cert-back.open,.cert-back.open *{visibility:visible!important}
+    .cert-back.open{
+      position:static;display:block!important;background:#fff;padding:0;
+      inset:auto;overflow:visible;
+    }
+    .cert-rain,.cert-actions{display:none!important}
+    .cert-shell{opacity:1!important;transform:none!important;max-width:100%}
+    .cert-frame{box-shadow:none}
+  }
 
   /* Session groups */
   .panel{background:#ffffffcc;border:1px solid #eef2f7;border-radius:20px;
@@ -326,8 +417,16 @@
 
     <div class="panel">
       <h2>Scenario journey</h2>
-      <p class="help">Same sticky-note diagram as the Journey Board. Admins tap the stamp on a card when that step is finished — it celebrates and syncs for everyone.</p>
+      <p class="help">Same sticky-note diagram as the Journey Board. Admins tap <strong>Done?</strong> on a card when that step is finished — it celebrates and syncs for everyone. Finish every card to unlock a class certificate!</p>
       <div id="sessionBoard"></div>
+      <div class="cert-banner" id="certBanner">
+        <span style="font-size:28px">🏆</span>
+        <div style="flex:1;min-width:180px">
+          <strong>Journey complete!</strong>
+          <div class="muted" style="font-size:12.5px;margin-top:2px">This class just became CIS journey experts.</div>
+        </div>
+        <button class="btn" type="button" id="viewCertBtn">View certificate</button>
+      </div>
     </div>
 
     <div class="panel">
@@ -354,6 +453,37 @@
     <div class="btn-row">
       <button class="btn secondary" id="mergeCancel" type="button">Cancel</button>
       <button class="btn" id="mergeConfirm" type="button">Combine</button>
+    </div>
+  </div>
+</div>
+
+<div class="cert-back" id="certModal" aria-hidden="true">
+  <div class="cert-rain" id="certRain" aria-hidden="true"></div>
+  <div class="cert-shell" id="certShell">
+    <div class="cert-frame">
+      <div class="cert-paper">
+        <div class="cert-kicker">OPOR · ENRICHMENT TRAINING</div>
+        <h2 class="cert-title">Certificate of Completion</h2>
+        <div class="cert-rule"></div>
+        <p class="cert-lede">This certifies that</p>
+        <div class="cert-name-pill">
+          <span class="mascot" id="certMascot">🗺️</span>
+          <input class="who" id="certName" type="text" value="Today's CIS Explorers" maxlength="48" aria-label="Certificate recipient name">
+        </div>
+        <p class="cert-body">
+          has successfully completed the full patient journey
+          <b id="certScenarioTitle">—</b>
+          on the <b>Patient Journey Board</b> and is now recognized as an expert in
+        </p>
+        <p class="cert-expert">Cerner CIS · cross-stream patient flow</p>
+        <div class="cert-streams" id="certStreams"></div>
+        <div class="cert-date"><span style="font-weight:600">Date:</span> <span id="certDate"></span></div>
+        <div class="cert-seal" title="Officially awesome">⭐</div>
+      </div>
+    </div>
+    <div class="cert-actions">
+      <button class="btn secondary" type="button" id="certCloseBtn">Keep exploring</button>
+      <button class="btn" type="button" id="certPrintBtn">Print / save PDF</button>
     </div>
   </div>
 </div>
@@ -944,7 +1074,10 @@ function setStepDone(si, stepIdx, wantDone, noteEl){
     return true;
   }
   if(wantDone) memoryStore.doneSteps[k]=true;
-  else delete memoryStore.doneSteps[k];
+  else{
+    delete memoryStore.doneSteps[k];
+    lastAutoCertKey=''; // allow certificate to show again after re-completing
+  }
   lastLocalDoneWrite=Date.now();
   saveLocalStore(memoryStore);
   scheduleFirebaseSave(true);
@@ -961,7 +1094,132 @@ function setStepDone(si, stepIdx, wantDone, noteEl){
     if(wantDone) celebrateDone(noteEl, randomCheer());
     else clearDoneVisual(noteEl);
   }
+  maybeCelebrateJourney(si, was, wantDone);
+  updateCertBanner();
   return true;
+}
+
+function scenarioStreams(si){
+  const sc=SCENARIOS[si];
+  if(!sc) return [];
+  const out=[]; const seen=new Set();
+  sc.steps.forEach(st=>{ const k=st[3]; if(!seen.has(k)){ seen.add(k); out.push(k); } });
+  return out;
+}
+
+function isScenarioFullyDone(si, doneSteps){
+  const sc=SCENARIOS[si];
+  if(!sc||!sc.steps.length) return false;
+  const ds=doneSteps||(memoryStore&&memoryStore.doneSteps)||{};
+  for(let i=0;i<sc.steps.length;i++){
+    if(!ds[stepKey(si,i)]) return false;
+  }
+  return true;
+}
+
+function formatCertDate(d){
+  const dt=d||new Date();
+  return dt.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+const CERT_MASCOTS=['🗺️','🏆','🩺','💻','🎉','⭐','🚀','🏥'];
+let certRainTimer=null;
+let certShowTimer=null;
+let lastAutoCertKey='';
+
+function startCertRain(){
+  const rain=document.getElementById('certRain');
+  if(!rain) return;
+  rain.innerHTML='';
+  const emoji='🎊';
+  for(let i=0;i<36;i++){
+    const s=document.createElement('span');
+    s.textContent=CERT_MASCOTS[i%CERT_MASCOTS.length];
+    s.style.left=(4+Math.random()*92)+'%';
+    s.style.fontSize=(22+Math.random()*26)+'px';
+    s.style.animationDelay=(Math.random()*2.2)+'s';
+    s.style.animationDuration=(2.2+Math.random()*1.8)+'s';
+    s.style.setProperty('--drift',(-30+Math.random()*60)+'px');
+    rain.appendChild(s);
+  }
+  clearTimeout(certRainTimer);
+  certRainTimer=setTimeout(()=>{ rain.innerHTML=''; },4200);
+}
+
+function fillCertificate(si){
+  const sc=SCENARIOS[si];
+  if(!sc) return;
+  const streams=scenarioStreams(si);
+  document.getElementById('certScenarioTitle').textContent=sc.title;
+  document.getElementById('certDate').textContent=formatCertDate();
+  document.getElementById('certMascot').textContent=CERT_MASCOTS[si%CERT_MASCOTS.length];
+  const nameEl=document.getElementById('certName');
+  if(nameEl){
+    let saved='';
+    try{ saved=localStorage.getItem('pjBoard.certName')||''; }catch(_){}
+    if(saved) nameEl.value=saved;
+    else if(!nameEl.value||nameEl.value==="Today's CIS Explorers"){
+      const store=getStore();
+      if(store.participants&&store.participants.length){
+        nameEl.value=store.participants.length<=3
+          ? store.participants.join(', ')
+          : `Today's class (${store.participants.length} explorers)`;
+      }
+    }
+  }
+  const streamEl=document.getElementById('certStreams');
+  streamEl.innerHTML=streams.map(k=>{
+    const s=STREAM[k];
+    return `<span class="chip" style="background:${s?s.ac:'#64748b'}">${escapeHtml(k)} · ${escapeHtml(s?s.name:k)}</span>`;
+  }).join('');
+  const expert=document.querySelector('.cert-expert');
+  if(expert){
+    expert.textContent=streams.length>=4
+      ? `Cerner CIS · expert across ${streams.length} streams`
+      : 'Cerner CIS · cross-stream patient flow';
+  }
+}
+
+function openCertificate(si, opts={}){
+  const modal=document.getElementById('certModal');
+  const shell=document.getElementById('certShell');
+  if(!modal||!shell) return;
+  fillCertificate(si);
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  shell.classList.remove('show');
+  if(opts.celebrate!==false) startCertRain();
+  clearTimeout(certShowTimer);
+  certShowTimer=setTimeout(()=>shell.classList.add('show'), 280);
+}
+
+function closeCertificate(){
+  const modal=document.getElementById('certModal');
+  const shell=document.getElementById('certShell');
+  if(!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  if(shell) shell.classList.remove('show');
+  const rain=document.getElementById('certRain');
+  if(rain) rain.innerHTML='';
+}
+
+function updateCertBanner(){
+  const banner=document.getElementById('certBanner');
+  if(!banner) return;
+  const store=getStore();
+  const done=isScenarioFullyDone(store.scenarioIndex, store.doneSteps);
+  banner.classList.toggle('show', done);
+}
+
+function maybeCelebrateJourney(si, wasDone, wantDone){
+  if(!wantDone||wasDone) return;
+  if(!isScenarioFullyDone(si, memoryStore&&memoryStore.doneSteps)) return;
+  const key=si+':complete';
+  // Auto-show once per scenario completion streak (allow reopen via banner)
+  if(lastAutoCertKey===key) return;
+  lastAutoCertKey=key;
+  setTimeout(()=>openCertificate(si,{celebrate:true}), 750);
 }
 
 function renderScenarioInto(target, sc, si, opts={}){
@@ -1376,6 +1634,7 @@ function syncSessionUI(store, msg){
     renderSessionScenario(store.scenarioIndex, store.groups);
     if(document.getElementById('view-board').classList.contains('active')) render();
     renderHistory(store);
+    updateCertBanner();
     if(msg) sessionStatus.textContent=msg;
   });
 }
@@ -1520,6 +1779,26 @@ document.getElementById('adminPass').addEventListener('keydown',e=>{
 document.getElementById('unlockAdminBtn').addEventListener('click', openAdminGate);
 document.getElementById('cancelAdminBtn').addEventListener('click', closeAdminGate);
 document.getElementById('lockAdminBtn').addEventListener('click', lockAdmin);
+
+document.getElementById('viewCertBtn').addEventListener('click',()=>{
+  openCertificate(getStore().scenarioIndex,{celebrate:true});
+});
+document.getElementById('certCloseBtn').addEventListener('click', closeCertificate);
+document.getElementById('certPrintBtn').addEventListener('click',()=>{
+  window.print();
+});
+document.getElementById('certModal').addEventListener('click',e=>{
+  if(e.target.id==='certModal') closeCertificate();
+});
+document.getElementById('certName').addEventListener('change',e=>{
+  try{ localStorage.setItem('pjBoard.certName', e.target.value); }catch(_){}
+});
+(function restoreCertName(){
+  try{
+    const saved=localStorage.getItem('pjBoard.certName');
+    if(saved) document.getElementById('certName').value=saved;
+  }catch(_){}
+})();
 
 document.getElementById('addRosterBtn').addEventListener('click',()=>addParticipant(rosterInput.value));
 rosterInput.addEventListener('keydown',e=>{
