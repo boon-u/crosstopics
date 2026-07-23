@@ -902,15 +902,6 @@ function renderSessionScenario(scenarioIndex, groups){
   });
 }
 
-render();
-let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
-  if(document.getElementById('view-board').classList.contains('active')) render();
-  if(document.getElementById('view-session').classList.contains('active')){
-    const store=getStore();
-    renderSessionScenario(store.scenarioIndex, store.groups);
-  }
-},120);});
-
 const ADMIN_PASSKEY='b00n777';
 const ADMIN_SESSION_KEY='pjBoard.adminUnlocked';
 let sessionMode='viewer'; // 'viewer' | 'admin'
@@ -923,6 +914,16 @@ function requireAdmin(){
   openAdminGate();
   return false;
 }
+
+render();
+let t; window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{
+  if(document.getElementById('view-board').classList.contains('active')) render();
+  if(document.getElementById('view-session').classList.contains('active')){
+    const store=getStore();
+    renderSessionScenario(store.scenarioIndex, store.groups);
+  }
+},120);});
+
 function applySessionMode(){
   const content=document.getElementById('sessionContent');
   const gate=document.getElementById('sessionGate');
