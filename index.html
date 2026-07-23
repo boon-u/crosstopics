@@ -174,12 +174,53 @@
   .cert-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
   .cert-actions .btn{flex:1;min-width:140px;justify-content:center}
   .cert-banner{
-    display:none;align-items:center;gap:10px;flex-wrap:wrap;
-    margin:12px 0 0;padding:12px 14px;border-radius:14px;
-    background:linear-gradient(135deg,#fff6df,#e6f7f4);border:1px solid #f2b53b55;
+    display:none;flex-direction:column;align-items:center;gap:14px;text-align:center;
+    margin:18px 0 0;padding:28px 22px;
+    border-radius:22px;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(242,181,59,.35), transparent 45%),
+      radial-gradient(circle at 80% 0%, rgba(14,156,138,.22), transparent 40%),
+      linear-gradient(155deg,#fffdf6 0%,#eefcf9 55%,#fff6df 100%);
+    border:1px solid rgba(242,181,59,.45);
+    box-shadow:0 16px 40px rgba(15,23,42,.08);
   }
   .cert-banner.show{display:flex}
-  .cert-banner strong{font-family:"Baloo 2",system-ui,sans-serif;font-size:15px;color:#0f172a}
+  .cert-banner .cert-hero{font-size:42px;line-height:1;filter:drop-shadow(0 6px 10px rgba(242,181,59,.35))}
+  .cert-banner strong{
+    font-family:"Baloo 2",system-ui,sans-serif;font-size:clamp(22px,3vw,28px);
+    color:#0f172a;display:block;line-height:1.15;
+  }
+  .cert-banner .cert-sub{color:#4a5c70;font-size:14.5px;line-height:1.5;max-width:420px;margin:0}
+  .cert-banner .btn-cert{
+    border:0;border-radius:999px;padding:14px 28px;cursor:pointer;font:inherit;
+    font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:17px;
+    color:#0f172a;background:linear-gradient(180deg,#ffd76a,#f2b53b);
+    box-shadow:0 10px 24px rgba(242,181,59,.4);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .cert-banner .btn-cert:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 14px 28px rgba(242,181,59,.5)}
+  .name-gate{
+    position:fixed;inset:0;z-index:85;display:none;align-items:center;justify-content:center;
+    padding:20px;background:rgba(15,23,42,.5);
+  }
+  .name-gate.open{display:flex}
+  .name-gate-card{
+    width:100%;max-width:420px;background:#fff;border-radius:20px;padding:24px 22px;
+    box-shadow:0 24px 60px rgba(15,23,42,.28);text-align:center;
+  }
+  .name-gate-card h3{
+    font-family:"Baloo 2",system-ui,sans-serif;font-size:24px;margin:0 0 8px;color:#0f172a;
+  }
+  .name-gate-card p{margin:0 0 16px;color:#64748b;font-size:14px;line-height:1.45}
+  .name-gate-card input{
+    width:100%;border:2px solid #dbe2ea;border-radius:12px;padding:12px 14px;
+    font:inherit;font-size:16px;font-weight:700;text-align:center;margin:0 0 14px;
+  }
+  .name-gate-card input:focus{outline:none;border-color:#0e9c8a;box-shadow:0 0 0 4px #0e9c8a22}
+  .name-gate-card .btn-row{justify-content:center}
+  .cert-name-pill .who-display{
+    font-family:"Baloo 2",system-ui,sans-serif;font-weight:800;font-size:clamp(20px,4vw,28px);color:#0f172a;
+  }
 
   @media print{
     body *{visibility:hidden!important}
@@ -188,7 +229,7 @@
       position:static;display:block!important;background:#fff;padding:0;
       inset:auto;overflow:visible;
     }
-    .cert-rain,.cert-actions{display:none!important}
+    .cert-rain,.cert-actions,.name-gate{display:none!important}
     .cert-shell{opacity:1!important;transform:none!important;max-width:100%}
     .cert-frame{box-shadow:none}
   }
@@ -417,15 +458,15 @@
 
     <div class="panel">
       <h2>Scenario journey</h2>
-      <p class="help">Same sticky-note diagram as the Journey Board. Admins tap <strong>Done?</strong> on a card when that step is finished — it celebrates and syncs for everyone. Finish every card to unlock a class certificate!</p>
+      <p class="help">Same sticky-note diagram as the Journey Board. Admins mark each step <strong>Done?</strong> as the class finishes it. When the full trauma journey is complete, everyone can claim their certificate.</p>
       <div id="sessionBoard"></div>
       <div class="cert-banner" id="certBanner">
-        <span style="font-size:28px">🏆</span>
-        <div style="flex:1;min-width:180px">
-          <strong>Journey complete!</strong>
-          <div class="muted" style="font-size:12.5px;margin-top:2px">This class just became CIS journey experts.</div>
+        <div class="cert-hero">🏆</div>
+        <div>
+          <strong>You finished the patient journey!</strong>
+          <p class="cert-sub">Grab your personal CIS expert certificate — one tap, type your name, confetti time.</p>
         </div>
-        <button class="btn" type="button" id="viewCertBtn">View certificate</button>
+        <button class="btn-cert" type="button" id="getCertBtn">Get my certificate ✨</button>
       </div>
     </div>
 
@@ -457,6 +498,20 @@
   </div>
 </div>
 
+<div class="name-gate" id="nameGate" aria-hidden="true">
+  <div class="name-gate-card" role="dialog" aria-labelledby="nameGateTitle">
+    <div style="font-size:36px;margin-bottom:8px">✍️</div>
+    <h3 id="nameGateTitle">Who earned this?</h3>
+    <p>Enter your name for a personal CIS journey certificate.</p>
+    <input id="nameGateInput" type="text" maxlength="48" placeholder="Your name" autocomplete="name">
+    <p class="status" id="nameGateStatus" style="margin:0 0 12px;min-height:1.2em"></p>
+    <div class="btn-row">
+      <button class="btn secondary" type="button" id="nameGateCancel">Cancel</button>
+      <button class="btn" type="button" id="nameGateGo">Make my certificate</button>
+    </div>
+  </div>
+</div>
+
 <div class="cert-back" id="certModal" aria-hidden="true">
   <div class="cert-rain" id="certRain" aria-hidden="true"></div>
   <div class="cert-shell" id="certShell">
@@ -468,7 +523,7 @@
         <p class="cert-lede">This certifies that</p>
         <div class="cert-name-pill">
           <span class="mascot" id="certMascot">🗺️</span>
-          <input class="who" id="certName" type="text" value="Today's CIS Explorers" maxlength="48" aria-label="Certificate recipient name">
+          <span class="who-display" id="certNameDisplay">—</span>
         </div>
         <p class="cert-body">
           has successfully completed the full patient journey
@@ -482,7 +537,7 @@
       </div>
     </div>
     <div class="cert-actions">
-      <button class="btn secondary" type="button" id="certCloseBtn">Keep exploring</button>
+      <button class="btn secondary" type="button" id="certCloseBtn">Close</button>
       <button class="btn" type="button" id="certPrintBtn">Print / save PDF</button>
     </div>
   </div>
@@ -1074,10 +1129,7 @@ function setStepDone(si, stepIdx, wantDone, noteEl){
     return true;
   }
   if(wantDone) memoryStore.doneSteps[k]=true;
-  else{
-    delete memoryStore.doneSteps[k];
-    lastAutoCertKey=''; // allow certificate to show again after re-completing
-  }
+  else delete memoryStore.doneSteps[k];
   lastLocalDoneWrite=Date.now();
   saveLocalStore(memoryStore);
   scheduleFirebaseSave(true);
@@ -1094,7 +1146,6 @@ function setStepDone(si, stepIdx, wantDone, noteEl){
     if(wantDone) celebrateDone(noteEl, randomCheer());
     else clearDoneVisual(noteEl);
   }
-  maybeCelebrateJourney(si, was, wantDone);
   updateCertBanner();
   return true;
 }
@@ -1105,6 +1156,15 @@ function scenarioStreams(si){
   const out=[]; const seen=new Set();
   sc.steps.forEach(st=>{ const k=st[3]; if(!seen.has(k)){ seen.add(k); out.push(k); } });
   return out;
+}
+
+// The classroom runs one scenario — the last one (MVA Trauma journey)
+function certScenarioIndex(){
+  return SCENARIOS.length-1;
+}
+
+function isJourneyComplete(doneSteps){
+  return isScenarioFullyDone(certScenarioIndex(), doneSteps);
 }
 
 function isScenarioFullyDone(si, doneSteps){
@@ -1125,48 +1185,35 @@ function formatCertDate(d){
 const CERT_MASCOTS=['🗺️','🏆','🩺','💻','🎉','⭐','🚀','🏥'];
 let certRainTimer=null;
 let certShowTimer=null;
-let lastAutoCertKey='';
 
 function startCertRain(){
   const rain=document.getElementById('certRain');
   if(!rain) return;
   rain.innerHTML='';
-  const emoji='🎊';
-  for(let i=0;i<36;i++){
+  for(let i=0;i<42;i++){
     const s=document.createElement('span');
-    s.textContent=CERT_MASCOTS[i%CERT_MASCOTS.length];
+    const pool=['🎊','🎉','✨','⭐','🏆','🎈','💫','🌟'];
+    s.textContent=pool[i%pool.length];
     s.style.left=(4+Math.random()*92)+'%';
-    s.style.fontSize=(22+Math.random()*26)+'px';
-    s.style.animationDelay=(Math.random()*2.2)+'s';
-    s.style.animationDuration=(2.2+Math.random()*1.8)+'s';
-    s.style.setProperty('--drift',(-30+Math.random()*60)+'px');
+    s.style.fontSize=(20+Math.random()*28)+'px';
+    s.style.animationDelay=(Math.random()*2.4)+'s';
+    s.style.animationDuration=(2.4+Math.random()*2)+'s';
+    s.style.setProperty('--drift',(-40+Math.random()*80)+'px');
     rain.appendChild(s);
   }
   clearTimeout(certRainTimer);
-  certRainTimer=setTimeout(()=>{ rain.innerHTML=''; },4200);
+  certRainTimer=setTimeout(()=>{ rain.innerHTML=''; },5200);
 }
 
-function fillCertificate(si){
+function fillCertificate(name){
+  const si=certScenarioIndex();
   const sc=SCENARIOS[si];
   if(!sc) return;
   const streams=scenarioStreams(si);
   document.getElementById('certScenarioTitle').textContent=sc.title;
   document.getElementById('certDate').textContent=formatCertDate();
   document.getElementById('certMascot').textContent=CERT_MASCOTS[si%CERT_MASCOTS.length];
-  const nameEl=document.getElementById('certName');
-  if(nameEl){
-    let saved='';
-    try{ saved=localStorage.getItem('pjBoard.certName')||''; }catch(_){}
-    if(saved) nameEl.value=saved;
-    else if(!nameEl.value||nameEl.value==="Today's CIS Explorers"){
-      const store=getStore();
-      if(store.participants&&store.participants.length){
-        nameEl.value=store.participants.length<=3
-          ? store.participants.join(', ')
-          : `Today's class (${store.participants.length} explorers)`;
-      }
-    }
-  }
+  document.getElementById('certNameDisplay').textContent=name;
   const streamEl=document.getElementById('certStreams');
   streamEl.innerHTML=streams.map(k=>{
     const s=STREAM[k];
@@ -1180,17 +1227,40 @@ function fillCertificate(si){
   }
 }
 
-function openCertificate(si, opts={}){
+function openNameGate(){
+  if(!isJourneyComplete(getStore().doneSteps)) return;
+  const gate=document.getElementById('nameGate');
+  const inp=document.getElementById('nameGateInput');
+  const status=document.getElementById('nameGateStatus');
+  if(!gate) return;
+  if(status) status.textContent='';
+  gate.classList.add('open');
+  gate.setAttribute('aria-hidden','false');
+  if(inp){
+    inp.value='';
+    setTimeout(()=>inp.focus(), 50);
+  }
+}
+
+function closeNameGate(){
+  const gate=document.getElementById('nameGate');
+  if(!gate) return;
+  gate.classList.remove('open');
+  gate.setAttribute('aria-hidden','true');
+}
+
+function openCertificate(name){
   const modal=document.getElementById('certModal');
   const shell=document.getElementById('certShell');
   if(!modal||!shell) return;
-  fillCertificate(si);
+  fillCertificate(name);
+  closeNameGate();
   modal.classList.add('open');
   modal.setAttribute('aria-hidden','false');
   shell.classList.remove('show');
-  if(opts.celebrate!==false) startCertRain();
+  startCertRain();
   clearTimeout(certShowTimer);
-  certShowTimer=setTimeout(()=>shell.classList.add('show'), 280);
+  certShowTimer=setTimeout(()=>shell.classList.add('show'), 220);
 }
 
 function closeCertificate(){
@@ -1208,18 +1278,21 @@ function updateCertBanner(){
   const banner=document.getElementById('certBanner');
   if(!banner) return;
   const store=getStore();
-  const done=isScenarioFullyDone(store.scenarioIndex, store.doneSteps);
+  const done=isJourneyComplete(store.doneSteps);
   banner.classList.toggle('show', done);
 }
 
-function maybeCelebrateJourney(si, wasDone, wantDone){
-  if(!wantDone||wasDone) return;
-  if(!isScenarioFullyDone(si, memoryStore&&memoryStore.doneSteps)) return;
-  const key=si+':complete';
-  // Auto-show once per scenario completion streak (allow reopen via banner)
-  if(lastAutoCertKey===key) return;
-  lastAutoCertKey=key;
-  setTimeout(()=>openCertificate(si,{celebrate:true}), 750);
+function submitCertName(){
+  const inp=document.getElementById('nameGateInput');
+  const status=document.getElementById('nameGateStatus');
+  const name=(inp&&inp.value||'').trim();
+  if(!name){
+    if(status) status.textContent='Please enter your name.';
+    if(inp) inp.focus();
+    return;
+  }
+  if(status) status.textContent='';
+  openCertificate(name);
 }
 
 function renderScenarioInto(target, sc, si, opts={}){
@@ -1780,25 +1853,20 @@ document.getElementById('unlockAdminBtn').addEventListener('click', openAdminGat
 document.getElementById('cancelAdminBtn').addEventListener('click', closeAdminGate);
 document.getElementById('lockAdminBtn').addEventListener('click', lockAdmin);
 
-document.getElementById('viewCertBtn').addEventListener('click',()=>{
-  openCertificate(getStore().scenarioIndex,{celebrate:true});
+document.getElementById('getCertBtn').addEventListener('click', openNameGate);
+document.getElementById('nameGateCancel').addEventListener('click', closeNameGate);
+document.getElementById('nameGateGo').addEventListener('click', submitCertName);
+document.getElementById('nameGateInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); submitCertName(); }
+});
+document.getElementById('nameGate').addEventListener('click',e=>{
+  if(e.target.id==='nameGate') closeNameGate();
 });
 document.getElementById('certCloseBtn').addEventListener('click', closeCertificate);
-document.getElementById('certPrintBtn').addEventListener('click',()=>{
-  window.print();
-});
+document.getElementById('certPrintBtn').addEventListener('click',()=>window.print());
 document.getElementById('certModal').addEventListener('click',e=>{
   if(e.target.id==='certModal') closeCertificate();
 });
-document.getElementById('certName').addEventListener('change',e=>{
-  try{ localStorage.setItem('pjBoard.certName', e.target.value); }catch(_){}
-});
-(function restoreCertName(){
-  try{
-    const saved=localStorage.getItem('pjBoard.certName');
-    if(saved) document.getElementById('certName').value=saved;
-  }catch(_){}
-})();
 
 document.getElementById('addRosterBtn').addEventListener('click',()=>addParticipant(rosterInput.value));
 rosterInput.addEventListener('keydown',e=>{
