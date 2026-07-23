@@ -445,6 +445,7 @@ let boardRef=null;
 let applyingRemote=false;
 let saveTimer=null;
 let firebaseReady=false;
+let lastLocalDoneWrite=0;
 
 function setPersistStatus(kind, label, detail){
   const dot=document.getElementById('persistDot');
@@ -484,9 +485,15 @@ function getStore(){ return loadStore(); }
 function saveStore(data){
   memoryStore=normalizeStore(data);
   saveLocalStore(memoryStore);
-  if(!firestoreDb||!boardRef||applyingRemote) return;
+  scheduleFirebaseSave();
+}
+
+function scheduleFirebaseSave(immediate){
+  if(!firestoreDb||!boardRef||applyingRemote||!memoryStore) return;
   clearTimeout(saveTimer);
-  saveTimer=setTimeout(()=>{
+  const run=()=>{
+    saveTimer=null;
+    if(!firestoreDb||!boardRef||applyingRemote||!memoryStore) return;
     const payload={
       participants:memoryStore.participants,
       roleHistory:memoryStore.roleHistory,
@@ -502,7 +509,9 @@ function saveStore(data){
       console.error(err);
       setPersistStatus('err','<strong>Persistence:</strong> Firebase save failed', err.message||String(err));
     });
-  },250);
+  };
+  if(immediate) run();
+  else saveTimer=setTimeout(run,250);
 }
 
 function configLooksReady(){
@@ -557,6 +566,10 @@ async function initFirebasePersistence(){
     boardRef.onSnapshot(doc=>{
       if(!doc.exists) return;
       const remote=normalizeStore(doc.data());
+      // Don't let a stale server snapshot undo a local Done?/Undo tap
+      if(memoryStore && Date.now()-lastLocalDoneWrite<2000){
+        remote.doneSteps={...(memoryStore.doneSteps||{})};
+      }
       const same=JSON.stringify({
         p:memoryStore.participants,g:memoryStore.groups,s:memoryStore.scenarioIndex,
         r:memoryStore.roleHistory,pr:memoryStore.preReduceCount??null,
@@ -874,11 +887,18 @@ function celebrateDone(noteEl, cheer){
     stamp.classList.add('is-done');
     stamp.setAttribute('aria-pressed','true');
     stamp.setAttribute('aria-label','Undo done (admin)');
-    stamp.title='Click again to undo';
+    stamp.title='Click to undo';
     const label=stamp.querySelector('.stamp-label');
     const mark=stamp.querySelector('.stamp-mark');
+    // Show the cheer briefly, then an obvious Undo affordance for admin
     if(label) label.textContent=cheer||randomCheer();
     if(mark) mark.textContent='✓';
+    if(isAdmin()){
+      setTimeout(()=>{
+        if(!noteEl.classList.contains('done')) return;
+        if(label) label.textContent='Undo ✓';
+      }, 900);
+    }
   }
   burstConfetti(noteEl);
   setTimeout(()=>noteEl.classList.remove('celebrating'),600);
@@ -908,20 +928,37 @@ function withPreservedScroll(fn){
   requestAnimationFrame(()=>window.scrollTo(x, y));
 }
 
-function setStepDone(si, stepIdx, done, noteEl){
+function setStepDone(si, stepIdx, wantDone, noteEl){
   if(!requireAdmin()) return false;
-  const store=getStore();
-  if(!store.doneSteps) store.doneSteps={};
+  // Mutate the live store (not a stale clone race)
+  if(!memoryStore) memoryStore=getStore();
+  memoryStore=normalizeStore(memoryStore);
+  if(!memoryStore.doneSteps) memoryStore.doneSteps={};
   const k=stepKey(si, stepIdx);
-  const was=!!store.doneSteps[k];
-  if(!!done===was) return true;
-  if(done) store.doneSteps[k]=true;
-  else delete store.doneSteps[k];
-  saveStore(store);
+  const was=!!memoryStore.doneSteps[k];
+  if(!!wantDone===was){
+    if(noteEl){
+      if(wantDone) celebrateDone(noteEl, cheerForKey(k));
+      else clearDoneVisual(noteEl);
+    }
+    return true;
+  }
+  if(wantDone) memoryStore.doneSteps[k]=true;
+  else delete memoryStore.doneSteps[k];
+  lastLocalDoneWrite=Date.now();
+  saveLocalStore(memoryStore);
+  scheduleFirebaseSave(true);
 
-  // Stay on this card: update in place (no full-page re-render / scroll jump)
+  // Explicit nested delete so undo can't be resurrected by merge races
+  if(boardRef && !wantDone && typeof firebase!=='undefined'){
+    boardRef.update({
+      ['doneSteps.'+k]: firebase.firestore.FieldValue.delete(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }).catch(err=>console.warn('doneSteps delete', err));
+  }
+
   if(noteEl){
-    if(done) celebrateDone(noteEl, randomCheer());
+    if(wantDone) celebrateDone(noteEl, randomCheer());
     else clearDoneVisual(noteEl);
   }
   return true;
@@ -993,9 +1030,9 @@ function renderScenarioInto(target, sc, si, opts={}){
           `<div style="display:flex;gap:2px;align-items:center;margin:2px 0">${faces}${extra}</div>`;
       }
       const doneBtn=trackDone
-        ? `<button type="button" class="done-stamp${done?' is-done':''}" style="font-size:${Math.max(9,fPill)}px" aria-pressed="${done?'true':'false'}" aria-label="${done?'Mark step not done':'Mark step done'}">`+
+        ? `<button type="button" class="done-stamp${done?' is-done':''}" style="font-size:${Math.max(9,fPill)}px" aria-pressed="${done?'true':'false'}" aria-label="${done?'Undo done':'Mark step done'}">`+
             `<span class="stamp-mark">${done?'✓':'○'}</span>`+
-            `<span class="stamp-label">${done?escapeHtml(cheerForKey(stepKey(si, thisStep))):'Done?'}</span>`+
+            `<span class="stamp-label">${done?(canEdit?'Undo ✓':escapeHtml(cheerForKey(stepKey(si, thisStep)))):'Done?'}</span>`+
           `</button>`
         : '';
       note.innerHTML=
@@ -1009,16 +1046,15 @@ function renderScenarioInto(target, sc, si, opts={}){
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
       if(trackDone){
         const btn=note.querySelector('.done-stamp');
-        if(done){
-          btn.title=canEdit?'Click again to undo':'';
-        }
+        if(done && canEdit) btn.title='Click to undo';
         btn.addEventListener('click',e=>{
           e.preventDefault();
           e.stopPropagation();
           if(!isAdmin()){ requireAdmin(); return; }
           btn.blur();
-          // Read live state (closure `done` goes stale after first tap)
-          const currentlyDone=note.classList.contains('done') || !!getStore().doneSteps?.[stepKey(si, thisStep)];
+          const key=stepKey(si, thisStep);
+          const currentlyDone=!!(memoryStore&&memoryStore.doneSteps&&memoryStore.doneSteps[key])
+            || note.classList.contains('done');
           setStepDone(si, thisStep, !currentlyDone, note);
         });
       }
