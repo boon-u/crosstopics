@@ -56,6 +56,14 @@
   .note .meta{opacity:.9;line-height:1.25;margin-top:1px}
   .note .pill{align-self:flex-start;margin-top:auto;font-weight:800;
               letter-spacing:.3px;color:#fff;border-radius:999px;padding:3px 8px}
+  .note.done{outline:2px solid #16a34a;box-shadow:0 8px 15px rgba(22,163,74,.2)}
+  .note.done .lbl{text-decoration:line-through;opacity:.8}
+  .note .done-row{
+    display:flex;align-items:center;gap:5px;margin-top:2px;
+    font-size:10.5px;font-weight:800;color:#64748b;user-select:none;
+  }
+  .note .done-row input{width:13px;height:13px;accent-color:#16a34a;flex-shrink:0}
+  .note.done .done-row{color:#166534}
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
 
   /* Session groups */
@@ -282,7 +290,7 @@
 
     <div class="panel">
       <h2>Scenario journey</h2>
-      <p class="help">Same sticky-note diagram as the Journey Board for the scenario selected above. Cards show which session group owns each step.</p>
+      <p class="help">Same sticky-note diagram as the Journey Board. Tick <strong>Done</strong> on a card when that step is finished (admin only) — everyone else sees it update.</p>
       <div id="sessionBoard"></div>
     </div>
 
@@ -419,6 +427,7 @@ function normalizeStore(raw){
   if(typeof s.scenarioIndex!=='number') s.scenarioIndex=0;
   if(!Array.isArray(s.groups)) s.groups=[];
   if(s.preReduceCount!=null && typeof s.preReduceCount!=='number') s.preReduceCount=null;
+  if(!s.doneSteps||typeof s.doneSteps!=='object'||Array.isArray(s.doneSteps)) s.doneSteps={};
   return s;
 }
 function cloneStore(s){ return JSON.parse(JSON.stringify(normalizeStore(s))); }
@@ -448,6 +457,7 @@ function saveStore(data){
       scenarioIndex:memoryStore.scenarioIndex,
       groups:memoryStore.groups,
       preReduceCount:memoryStore.preReduceCount??null,
+      doneSteps:memoryStore.doneSteps||{},
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
     boardRef.set(payload,{merge:true}).then(()=>{
@@ -513,10 +523,12 @@ async function initFirebasePersistence(){
       const remote=normalizeStore(doc.data());
       const same=JSON.stringify({
         p:memoryStore.participants,g:memoryStore.groups,s:memoryStore.scenarioIndex,
-        r:memoryStore.roleHistory,pr:memoryStore.preReduceCount??null
+        r:memoryStore.roleHistory,pr:memoryStore.preReduceCount??null,
+        d:memoryStore.doneSteps||{}
       })===JSON.stringify({
         p:remote.participants,g:remote.groups,s:remote.scenarioIndex,
-        r:remote.roleHistory,pr:remote.preReduceCount??null
+        r:remote.roleHistory,pr:remote.preReduceCount??null,
+        d:remote.doneSteps||{}
       });
       if(same) return;
       applyingRemote=true;
@@ -748,14 +760,31 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
   svg.appendChild(tri);
 }
 
+function stepKey(si, stepIdx){ return si+':'+stepIdx; }
+
+function setStepDone(si, stepIdx, done){
+  if(!requireAdmin()) return false;
+  const store=getStore();
+  if(!store.doneSteps) store.doneSteps={};
+  const k=stepKey(si, stepIdx);
+  if(done) store.doneSteps[k]=true;
+  else delete store.doneSteps[k];
+  saveStore(store);
+  syncSessionUI(store);
+  return true;
+}
+
 function renderScenarioInto(target, sc, si, opts={}){
   const groups=opts.groups||null;
   const showTitle=opts.showTitle!==false;
+  const trackDone=!!opts.trackDone;
+  const doneSteps=(opts.doneSteps!=null?opts.doneSteps:(getStore().doneSteps||{}));
+  const canEdit=trackDone && isAdmin();
   const pad=8;
   const avail=Math.max(360, target.clientWidth - 34);
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
-  const cardH=Math.max(groups?188:168, Math.round(cardW*(groups?1.32:1.22)));
+  const cardH=Math.max(groups?200:180, Math.round(cardW*(groups?1.36:1.26)));
   const topPad=44;
   const bottomPad=28;
   const oscil=Math.round(cardH*0.38);
@@ -785,6 +814,7 @@ function renderScenarioInto(target, sc, si, opts={}){
     const gap=n>1?(W - 2*pad - n*cardW)/(n-1):0;
     const yBase=ri*(rowH+rowGap);
     for(let i=0;i<n;i++){
+      const thisStep=stepIdx;
       const st=sc.steps[stepIdx++];
       const x=pad + i*(cardW+gap);
       const y=yBase + topPad + (i%2===0?0:oscil) + (rand()*6-3);
@@ -793,7 +823,8 @@ function renderScenarioInto(target, sc, si, opts={}){
       const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
       const gi=streamToGroupIndex(groups, stream);
       const g=gi>=0?groups[gi]:null;
-      const note=document.createElement('div'); note.className='note';
+      const done=!!doneSteps[stepKey(si, thisStep)];
+      const note=document.createElement('div'); note.className='note'+(done?' done':'');
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
       note.style.minHeight=cardH+'px'; note.style.background=s.bg;
       note.style.transform=`rotate(${rot}deg)`;
@@ -807,6 +838,12 @@ function renderScenarioInto(target, sc, si, opts={}){
           `<div class="meta" style="font-size:${fMeta}px;font-weight:800">Group: ${escapeHtml(g.title.replace(/^Group \d+ — /,''))}</div>`+
           `<div style="display:flex;gap:2px;align-items:center;margin:2px 0">${faces}${extra}</div>`;
       }
+      const doneRow=trackDone
+        ? `<label class="done-row" style="font-size:${Math.max(9,fPill)}px">`+
+            `<input type="checkbox" ${done?'checked':''} ${canEdit?'':'disabled'} aria-label="Mark step done">`+
+            `<span>${done?'Done':'Done?'}</span>`+
+          `</label>`
+        : '';
       note.innerHTML=
         `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
         `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
@@ -814,7 +851,23 @@ function renderScenarioInto(target, sc, si, opts={}){
         `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
         (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
         groupMeta+
+        doneRow+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
+      if(trackDone){
+        const cb=note.querySelector('input[type=checkbox]');
+        if(canEdit){
+          cb.addEventListener('click',e=>e.stopPropagation());
+          cb.addEventListener('change',e=>{
+            e.stopPropagation();
+            if(!setStepDone(si, thisStep, cb.checked)) cb.checked=!cb.checked;
+          });
+        } else {
+          note.querySelector('.done-row').addEventListener('click',e=>{
+            e.preventDefault(); e.stopPropagation();
+            requireAdmin();
+          });
+        }
+      }
       canvas.appendChild(note);
     }
   });
@@ -832,7 +885,10 @@ function renderScenarioInto(target, sc, si, opts={}){
 
 function render(){
   board.innerHTML='';
-  visibleScenarios().forEach(({sc,i})=>renderScenarioInto(board, sc, i, {showTitle:true}));
+  const doneSteps=getStore().doneSteps||{};
+  visibleScenarios().forEach(({sc,i})=>renderScenarioInto(board, sc, i, {
+    showTitle:true, trackDone:true, doneSteps
+  }));
 }
 
 function renderSessionScenario(scenarioIndex, groups){
@@ -841,7 +897,9 @@ function renderSessionScenario(scenarioIndex, groups){
   el.innerHTML='';
   const sc=SCENARIOS[scenarioIndex];
   if(!sc) return;
-  renderScenarioInto(el, sc, scenarioIndex, {showTitle:true, groups});
+  renderScenarioInto(el, sc, scenarioIndex, {
+    showTitle:true, groups, trackDone:true, doneSteps:getStore().doneSteps||{}
+  });
 }
 
 render();
@@ -1124,6 +1182,7 @@ function syncSessionUI(store, msg){
   }
   renderGroups(store.groups);
   renderSessionScenario(store.scenarioIndex, store.groups);
+  if(document.getElementById('view-board').classList.contains('active')) render();
   renderHistory(store);
   if(msg) sessionStatus.textContent=msg;
 }
