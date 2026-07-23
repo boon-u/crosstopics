@@ -519,13 +519,13 @@
 
     <div class="panel">
       <h2>Scenario journey</h2>
-      <p class="help">Same sticky-note diagram as the Journey Board. Admins mark each step <strong>Done?</strong> as the class finishes it. When every card across today’s visible journeys is done, everyone can claim their certificate.</p>
+      <p class="help">Same sticky-note diagram as the Journey Board. Admins mark each step <strong>Done?</strong> as the class finishes it. Anyone can claim a certificate below anytime.</p>
       <div id="sessionBoard"></div>
-      <div class="cert-banner" id="certBanner">
+      <div class="cert-banner show" id="certBanner">
         <div class="cert-hero">🏆</div>
         <div>
           <strong>You finished the patient journey!</strong>
-          <p class="cert-sub">Grab your personal Cross-Topics CIS certificate — tap your name and celebrate.</p>
+          <p class="cert-sub">Tap below anytime to grab your personal Cross-Topics CIS certificate.</p>
         </div>
         <button class="btn-cert" type="button" id="getCertBtn">Get my certificate ✨</button>
       </div>
@@ -1332,7 +1332,6 @@ function fillCertificate(name){
 }
 
 function openNameGate(){
-  if(!isJourneyComplete(getStore().doneSteps) && !isCertPreview()) return;
   const gate=document.getElementById('nameGate');
   const inp=document.getElementById('nameGateInput');
   const status=document.getElementById('nameGateStatus');
@@ -1400,9 +1399,7 @@ function isCertPreview(){
 function updateCertBanner(){
   const banner=document.getElementById('certBanner');
   if(!banner) return;
-  const store=getStore();
-  const done=isJourneyComplete(store.doneSteps) || isCertPreview();
-  banner.classList.toggle('show', done);
+  banner.classList.add('show');
 }
 
 function submitCertName(){
