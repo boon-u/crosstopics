@@ -772,14 +772,15 @@ const SCENARIOS = [
    },
    arrowLabels:{
      3:['Admission · Emergency → Inpatient','CapMan · PAO · handover'],
+     4:['Transfer · Inpatient → OR','CapMan'],
    },
    steps:[['🚑','Pre-arrival and Registration','Pre-hospital','Reg','','','edReg'],
           ['🚨','Trauma Activation, Documentation & Orders','Emergency','ED'],
           ['🩸','Specimen collection','Lab','Lab'],
           ['🩻','Trauma imaging (CT)','DI','DI'],
-          ['🏥','Inpatient care, documentation & pre-op checklist','Inpatient','Nursing'],
+          ['🏥','Inpatient care & pre-op','Inpatient','Nursing'],
           ['🔪','Intra Op - surgery','Inpatient · OR','Peri'],
-          ['🛌','Post Op care','Inpatient','Peri'],
+          ['🛌','PACU','Inpatient','Peri'],
           ['🏡','Discharge','Inpatient','Nursing','','Rijo']]},
 ];
 function visibleScenarios(){
