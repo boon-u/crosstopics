@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ed-registration-game/ed-registration-game.css">
 <style>
   :root{
     --ink:#0f172a; --muted:#64748b;
@@ -125,6 +126,64 @@
     100%{transform:translate3d(var(--dx),var(--dy),0) rotate(var(--rot));opacity:0}
   }
   .hint{color:var(--muted);font-size:12px;margin:18px 0 0;text-align:center;font-style:italic}
+
+  /* Whole-card entry for the ED Registration flowchart scenario */
+  .note.note-interactive{cursor:pointer;outline:2px dashed transparent;}
+  .note.note-interactive:hover{outline-color:rgba(8,145,178,.55);}
+  .note.note-interactive:focus-visible{outline:2px solid #0891b2;outline-offset:2px;}
+  .note .edg-card-hint{
+    align-self:flex-start;margin-top:4px;font-weight:800;letter-spacing:.2px;
+    color:#0e7490;background:rgba(8,145,178,.12);
+    border-radius:999px;padding:2px 8px;line-height:1.3;
+  }
+
+  /* Finish / end-of-scenario card */
+  .note.note-finish{
+    outline:3px solid #f2b53b;
+    box-shadow:0 14px 30px rgba(242,181,59,.32), 0 8px 18px rgba(15,23,42,.10);
+    background-image:linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0) 42%);
+  }
+  .note.note-finish.done{outline-color:#16a34a}
+  .note.note-finish .finish-ribbon{
+    position:absolute;top:-14px;left:50%;transform:translateX(-50%) rotate(0deg);
+    background:linear-gradient(135deg,#f59e0b,#f2b53b);
+    color:#3b2f00;font-weight:800;font-size:10px;letter-spacing:.3px;white-space:nowrap;
+    padding:3px 12px;border-radius:999px;border:2px solid #fff;
+    box-shadow:0 6px 14px rgba(242,181,59,.4);z-index:6;
+  }
+  .note.note-finish::after{
+    content:'🎉';position:absolute;bottom:6px;right:8px;font-size:15px;
+    opacity:.9;filter:drop-shadow(0 2px 3px rgba(15,23,42,.2));
+  }
+
+  /* Facilitator talking points — docked under sticky notes (keeps cards clean) */
+  .note-tips{
+    position:absolute;z-index:4;pointer-events:none;
+    background:#fff;border:1px solid #e2e8f0;border-radius:12px;
+    padding:7px 8px 8px;box-shadow:0 6px 14px rgba(15,23,42,.08);
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .note-tips::before{
+    content:'';position:absolute;top:-5px;left:14px;width:9px;height:9px;
+    background:#fff;border-left:1px solid #e2e8f0;border-top:1px solid #e2e8f0;
+    transform:rotate(45deg);
+  }
+  .note-tips .tips-kicker{
+    font-size:9.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+    color:#64748b;margin:0 0 1px;
+  }
+  .note-tips ol{
+    margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:2px;
+  }
+  .note-tips li{
+    display:flex;align-items:flex-start;gap:5px;
+    font-size:10.5px;font-weight:650;line-height:1.25;color:#334155;
+  }
+  .note-tips .tip-n{
+    flex:0 0 auto;width:14px;height:14px;border-radius:50%;
+    display:grid;place-items:center;font-size:9px;font-weight:800;color:#fff;
+    margin-top:1px;
+  }
 
   /* Fun completion certificate (Registration Trail vibes) */
   .cert-back{
@@ -435,6 +494,10 @@
     <p class="hint">Hover any sticky note to lift it. Each lane is one patient's journey; wavy arrows show the hand-off from step to step.</p>
   </div>
 
+  <div class="view" id="view-ed-game" hidden>
+    <div id="edGameHost"></div>
+  </div>
+
   <div class="view" id="view-session">
     <div class="persist-bar" id="persistBar">
       <span class="persist-dot" id="persistDot"></span>
@@ -658,13 +721,20 @@ const SCENARIOS = [
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
   {title:'MVA Trauma — Emergency Surgery', sub:'Pre-hospital → Emergency → Inpatient → OR',
    wrapAfter:5,
-   steps:[['🚑','Pre-arrival and Registration','Pre-hospital','Reg'],
-          ['🚨','Trauma activation + documentation','Emergency','ED'],
-          ['🧾','Order entry: Lab / Imaging','Emergency','ED'],
+   tips:{
+     0:['Brief about flow','Pre-arrival','ED Quick Reg','Attach Pre-arrival to reg'],
+     1:['Assessment documentation','Lab and DI orders','OR Checklist','Admission orders'],
+     2:['Collect specimen','Specimen login','Result entry'],
+     3:['Place order','Setup online worklist','Start and complete exam'],
+   },
+   arrowLabels:{
+     4:['Admission · Emergency → Inpatient','CapMan · PAO · handover'],
+   },
+   steps:[['🚑','Pre-arrival and Registration','Pre-hospital','Reg','','','edReg'],
+          ['🚨','Trauma Activation, Documentation & Orders','Emergency','ED'],
           ['🩸','Specimen collection','Lab','Lab'],
           ['🩻','Trauma imaging (CT)','DI','DI'],
           ['💊','Medication administration','Emergency','Nursing'],
-          ['🛏️','Admission: CapMan · PAO · handover','Emergency → Inpatient','Nursing'],
           ['🏥','Inpatient care + documentation','Inpatient','Nursing'],
           ['✅','Pre-op checklist','Inpatient','Nursing'],
           ['🔪','Emergency surgery','Inpatient · OR','Peri'],
@@ -968,10 +1038,15 @@ function buildGroupsForScenario(scenarioIndex, groupCount, participants, history
 /* ---- Tabs ---- */
 document.querySelectorAll('.tab').forEach(btn=>{
   btn.addEventListener('click',()=>{
+    if(typeof window.__closeEDRegistrationGame==='function') window.__closeEDRegistrationGame();
     document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>{
+      v.classList.remove('active');
+      if(v.id==='view-ed-game') v.hidden=true;
+    });
     btn.classList.add('active');
-    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    const view=document.getElementById('view-'+btn.dataset.view);
+    if(view){ view.classList.add('active'); view.hidden=false; }
     if(btn.dataset.view==='board') render();
     if(btn.dataset.view==='session'){
       const store=getStore();
@@ -997,7 +1072,41 @@ for(const k in STREAM){const s=STREAM[k];
 
 const board=document.getElementById('board');
 
-function drawArrow(svg, x1,y1,x2,y2, col, rand){
+const SVGNS='http://www.w3.org/2000/svg';
+function drawArrowLabel(svg, cx, cy, lines, col){
+  if(!lines) return;
+  const arr=Array.isArray(lines)?lines:[lines];
+  const fs=[11.5,9.5];
+  const maxChars=Math.max(...arr.map(l=>l.length));
+  const w=Math.max(78, maxChars*6.1+18);
+  const lh=13;
+  const h=8 + arr.length*lh + 2;
+  const g=document.createElementNS(SVGNS,'g');
+  g.setAttribute('class','arrow-label');
+  const rect=document.createElementNS(SVGNS,'rect');
+  rect.setAttribute('x',cx-w/2); rect.setAttribute('y',cy-h/2);
+  rect.setAttribute('width',w); rect.setAttribute('height',h);
+  rect.setAttribute('rx','9'); rect.setAttribute('ry','9');
+  rect.setAttribute('fill','#ffffff'); rect.setAttribute('stroke',col);
+  rect.setAttribute('stroke-width','1.5'); rect.setAttribute('stroke-opacity','0.55');
+  rect.setAttribute('filter','');
+  rect.style.filter='drop-shadow(0 3px 6px rgba(15,23,42,.14))';
+  g.appendChild(rect);
+  arr.forEach((line,i)=>{
+    const t=document.createElementNS(SVGNS,'text');
+    const ty=cy-h/2+9+ i*lh + (arr.length>1?4:2);
+    t.setAttribute('x',cx); t.setAttribute('y',ty);
+    t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-size',(i===0?fs[0]:fs[1]));
+    t.setAttribute('font-weight',i===0?'800':'700');
+    t.setAttribute('fill',i===0?col:'#475569');
+    t.textContent=line;
+    g.appendChild(t);
+  });
+  svg.appendChild(g);
+}
+
+function drawArrow(svg, x1,y1,x2,y2, col, rand, label){
   const dx=x2-x1, dy=y2-y1;
   const wob=(rand()*40-20);
   const cx1=x1+dx*0.42, cy1=y1+(dy?dy*0.2:0)+wob, cx2=x2-dx*0.42, cy2=y2-(dy?dy*0.2:0)-wob;
@@ -1012,6 +1121,7 @@ function drawArrow(svg, x1,y1,x2,y2, col, rand){
   tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*Math.cos(ang-0.5)} ${ayp-ah*Math.sin(ang-0.5)}, ${axp-ah*Math.cos(ang+0.5)} ${ayp-ah*Math.sin(ang+0.5)}`);
   tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
   svg.appendChild(tri);
+  if(label) drawArrowLabel(svg, (x1+x2)/2, (y1+y2)/2, label, col);
 }
 
 function streamToGroupIndex(groups, stream){
@@ -1020,7 +1130,37 @@ function streamToGroupIndex(groups, stream){
   return idx;
 }
 
-function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
+function drawWrapArrow(svg, a, b, cardW, cardH, col, W, label, laneY){
+  // When a clear lane is provided (source row has talking-point docks), route the
+  // arrow straight down past the docks, across a dedicated lane, then into the next row.
+  if(laneY!=null){
+    // Same single-belly sweep as the other wrap arrows, but the belly is anchored in a
+    // clear lane below the talking-point docks. The shoulders rise only over the
+    // (tip-free) source and target cards, so it stays uniform without overlapping tips.
+    const x1=a.x+cardW*0.62, y1=a.y+cardH;
+    const x2=b.x+cardW*0.38, y2=b.y;
+    const xm=(x1+x2)/2;
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d',
+      `M ${x1} ${y1} `+
+      `C ${x1} ${y1+(laneY-y1)*0.6}, ${xm+(x1-xm)*0.15} ${laneY}, ${xm} ${laneY} `+
+      `C ${xm+(x2-xm)*0.15} ${laneY}, ${x2} ${y2-(y2-laneY)*0.55}, ${x2} ${y2-14}`);
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke',col); path.setAttribute('stroke-width','2.5');
+    path.setAttribute('stroke-linecap','round'); path.setAttribute('stroke-linejoin','round');
+    path.setAttribute('opacity','0.78');
+    svg.appendChild(path);
+    const ah=10, tipX=x2, tipY=y2-2;
+    const tri=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    tri.setAttribute('points',
+      `${tipX} ${tipY}, `+
+      `${tipX-ah*0.55} ${tipY-ah}, `+
+      `${tipX+ah*0.55} ${tipY-ah}`);
+    tri.setAttribute('fill',col); tri.setAttribute('opacity','0.88');
+    svg.appendChild(tri);
+    if(label) drawArrowLabel(svg, xm, laneY, label, col);
+    return;
+  }
   // Smooth U/S from end of one row into the start of the next (G1-continuous, no kink)
   const x1=a.x+cardW*0.62, y1=a.y+cardH;
   const x2=b.x+cardW*0.38, y2=b.y;
@@ -1054,6 +1194,7 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W){
     `${tipX-ah*Math.cos(ang+0.5)} ${tipY-ah*Math.sin(ang+0.5)}`);
   tri.setAttribute('fill',col); tri.setAttribute('opacity','0.88');
   svg.appendChild(tri);
+  if(label) drawArrowLabel(svg, xm, midY, label, col);
 }
 
 function stepKey(si, stepIdx){ return si+':'+stepIdx; }
@@ -1421,13 +1562,18 @@ function renderScenarioInto(target, sc, si, opts={}){
   const trackDone=!!opts.trackDone;
   const doneSteps=(opts.doneSteps!=null?opts.doneSteps:(getStore().doneSteps||{}));
   const canEdit=trackDone && isAdmin();
+  const tipsByStep=sc.tips&&typeof sc.tips==='object'?sc.tips:{};
+  const hasTips=Object.keys(tipsByStep).length>0;
+  const maxTipCount=hasTips?Math.max(...Object.values(tipsByStep).map(t=>Array.isArray(t)?t.length:0)):0;
+  // Room for under-card tip docks
+  const tipStripH=hasTips?(22 + maxTipCount*15 + 34):0;
   const pad=8;
   const avail=Math.max(360, target.clientWidth - 34);
   let cardW=(avail - 2*pad - (MAXN-1)*Math.max(12, avail*0.018)) / MAXN;
   cardW=Math.max(96, Math.min(158, cardW));
   const cardH=Math.max(groups?204:184, Math.round(cardW*(groups?1.38:1.28)));
   const topPad=trackDone?68:44;
-  const bottomPad=28;
+  const bottomPad=28 + tipStripH;
   const oscil=Math.round(cardH*0.38);
   const rowH=topPad + cardH + oscil + bottomPad;
   const rowGap=sc.wrapAfter?72:56;
@@ -1451,6 +1597,8 @@ function renderScenarioInto(target, sc, si, opts={}){
   svg.setAttribute('class','links'); svg.setAttribute('width',W); svg.setAttribute('height',H);
   canvas.appendChild(svg);
   const pos=[];
+  const rowTipBottom={};
+  const lastStepIdx=sc.steps.length-1;
   let stepIdx=0;
   rows.forEach((n,ri)=>{
     const gap=n>1?(W - 2*pad - n*cardW)/(n-1):0;
@@ -1458,16 +1606,19 @@ function renderScenarioInto(target, sc, si, opts={}){
     for(let i=0;i<n;i++){
       const thisStep=stepIdx;
       const st=sc.steps[stepIdx++];
-      const x=pad + i*(cardW+gap);
+      // Lonely single-card rows are centred so the finale doesn't look stranded
+      const x = n===1 ? (W - cardW)/2 : pad + i*(cardW+gap);
       const y=yBase + topPad + (i%2===0?0:oscil) + (rand()*6-3);
       const rot=(rand()*5-2.5).toFixed(2);
       pos.push({x,y,ri});
-      const [emj,lbl,enc,stream,app,facilitator]=st; const s=STREAM[stream];
+      const [emj,lbl,enc,stream,app,facilitator,interactive]=st; const s=STREAM[stream];
       const gi=streamToGroupIndex(groups, stream);
       const g=gi>=0?groups[gi]:null;
       const done=!!doneSteps[stepKey(si, thisStep)];
       const showLisa=trackDone && thisStep===lisaStep;
-      const note=document.createElement('div'); note.className='note'+(done?' done':'');
+      const tips=Array.isArray(tipsByStep[thisStep])?tipsByStep[thisStep]:null;
+      const isFinish=thisStep===lastStepIdx;
+      const note=document.createElement('div'); note.className='note'+(done?' done':'')+(isFinish?' note-finish':'');
       note.dataset.si=String(si);
       note.dataset.step=String(thisStep);
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
@@ -1490,16 +1641,39 @@ function renderScenarioInto(target, sc, si, opts={}){
             `<span class="stamp-label">${done?(canEdit?'Undo ✓':escapeHtml(cheerForKey(stepKey(si, thisStep)))):'Done?'}</span>`+
           `</button>`
         : '';
+      const launchHint=interactive==='edReg'
+        ? `<div class="edg-card-hint" style="font-size:${Math.max(8.5,fPill)}px">▶ Tap to open flowchart</div>`
+        : '';
       note.innerHTML=
         (showLisa?lisaTrackerHtml():'')+
+        (isFinish?`<div class="finish-ribbon">🏁 End of journey</div>`:'')+
         `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
         `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
         `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
         `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
         (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
         groupMeta+
+        launchHint+
         doneBtn+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
+      if(interactive==='edReg'){
+        note.classList.add('note-interactive');
+        note.setAttribute('role','button');
+        note.setAttribute('tabindex','0');
+        note.setAttribute('aria-label','Open ED Registration flowchart scenario');
+        const openGame=e=>{
+          // Ignore clicks on the Done stamp
+          if(e.target.closest('.done-stamp')) return;
+          e.preventDefault();
+          if(typeof window.__openEDRegistrationGame==='function'){
+            window.__openEDRegistrationGame();
+          }
+        };
+        note.addEventListener('click',openGame);
+        note.addEventListener('keydown',e=>{
+          if(e.key==='Enter'||e.key===' '){ openGame(e); }
+        });
+      }
       if(trackDone){
         const btn=note.querySelector('.done-stamp');
         if(done && canEdit) btn.title='Click to undo';
@@ -1515,15 +1689,38 @@ function renderScenarioInto(target, sc, si, opts={}){
         });
       }
       canvas.appendChild(note);
+
+      if(tips&&tips.length){
+        const tipH=note.style.minHeight?parseFloat(note.style.minHeight):cardH;
+        const tipTop=y+tipH+10;
+        const tipsEl=document.createElement('div');
+        tipsEl.className='note-tips';
+        tipsEl.style.left=x+'px';
+        tipsEl.style.top=tipTop+'px';
+        tipsEl.style.width=cardW+'px';
+        tipsEl.innerHTML=
+          `<div class="tips-kicker">Talking points</div>`+
+          `<ol>${tips.map((t,ti)=>
+            `<li><span class="tip-n" style="background:${s.ac}">${ti+1}</span><span>${escapeHtml(t)}</span></li>`
+          ).join('')}</ol>`;
+        canvas.appendChild(tipsEl);
+        // Estimate dock height so wrap arrows can route clear of the talking points
+        const tipDockH=30 + tips.length*15.5;
+        rowTipBottom[ri]=Math.max(rowTipBottom[ri]||0, tipTop+tipDockH);
+      }
     }
   });
+  const arrowLabels=sc.arrowLabels&&typeof sc.arrowLabels==='object'?sc.arrowLabels:{};
   for(let i=0;i<pos.length-1;i++){
     const a=pos[i], b=pos[i+1];
     const col=STREAM[sc.steps[i+1][3]].ac;
+    const arrowLabel=arrowLabels[i]||null;
     if(a.ri===b.ri){
-      drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand);
+      drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand, arrowLabel);
     } else {
-      drawWrapArrow(svg, a, b, cardW, cardH, col, W);
+      // If the source row has talking-point docks, route the wrap arrow below them
+      const laneY=rowTipBottom[a.ri]?rowTipBottom[a.ri]+32:null;
+      drawWrapArrow(svg, a, b, cardW, cardH, col, W, arrowLabel, laneY);
     }
   }
   flow.appendChild(canvas); sec.appendChild(flow); target.appendChild(sec);
@@ -1536,6 +1733,7 @@ function render(){
     showTitle:true, trackDone:true, doneSteps
   }));
 }
+window.__pjRenderBoard=render;
 
 function renderSessionScenario(scenarioIndex, groups){
   const el=document.getElementById('sessionBoard');
@@ -2095,6 +2293,11 @@ document.getElementById('confirmRoles').addEventListener('click',()=>{
   }
   syncSessionUI(store);
 })();
+</script>
+<script type="module">
+  import { openEDRegistrationGame, closeEDRegistrationGame } from './ed-registration-game/index.js';
+  window.__openEDRegistrationGame = openEDRegistrationGame;
+  window.__closeEDRegistrationGame = closeEDRegistrationGame;
 </script>
 </body>
 </html>
