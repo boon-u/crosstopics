@@ -156,6 +156,47 @@
     opacity:.9;filter:drop-shadow(0 2px 3px rgba(15,23,42,.2));
   }
 
+  /* Participant spotlight (host call-on helper) */
+  .spotlight{
+    position:fixed;top:14px;right:14px;z-index:46;width:222px;
+    background:#fff;border:1px solid #e2e8f0;border-radius:16px;
+    box-shadow:0 14px 34px rgba(15,23,42,.16);overflow:hidden;
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  .spotlight.is-hidden{display:none}
+  .spotlight-head{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:8px 10px;background:linear-gradient(135deg,#0e9c8a,#0891b2);color:#fff;
+  }
+  .spotlight-title{font-size:12.5px;font-weight:800;letter-spacing:.3px}
+  .spotlight-collapse{
+    border:0;background:rgba(255,255,255,.2);color:#fff;cursor:pointer;
+    width:22px;height:22px;border-radius:7px;font-size:14px;font-weight:800;line-height:1;
+    display:grid;place-items:center;
+  }
+  .spotlight-collapse:hover{background:rgba(255,255,255,.32)}
+  .spotlight-body{padding:12px 12px 12px;text-align:center}
+  .spotlight.collapsed .spotlight-body{display:none}
+  .spotlight-kicker{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#64748b;margin:0 0 4px}
+  .spotlight-name{
+    font-size:19px;font-weight:800;color:#0f172a;line-height:1.2;min-height:24px;
+    word-break:break-word;
+  }
+  .spotlight-name.pop{animation:spotlight-pop .5s cubic-bezier(.2,1.3,.3,1)}
+  @keyframes spotlight-pop{
+    0%{transform:scale(.7);opacity:.2}
+    60%{transform:scale(1.08);opacity:1}
+    100%{transform:scale(1)}
+  }
+  .spotlight-sub{font-size:11px;color:#64748b;margin:6px 0 10px}
+  .spotlight-sub b{color:#0e7490}
+  .spotlight-actions{display:flex;gap:6px}
+  .spotlight-actions .btn{flex:1;justify-content:center;padding:7px 8px;font-size:12px}
+  @media (max-width:560px){
+    .spotlight{width:180px;top:10px;right:10px}
+    .spotlight-name{font-size:17px}
+  }
+
   /* Facilitator talking points — docked under sticky notes (keeps cards clean) */
   .note-tips{
     position:absolute;z-index:4;pointer-events:none;
@@ -2292,6 +2333,96 @@ document.getElementById('confirmRoles').addEventListener('click',()=>{
     }
   }
   syncSessionUI(store);
+})();
+
+/* ---- Participant spotlight (auto call-on helper) ---- */
+const SPOTLIGHT_PARTICIPANTS=[
+  'George Akaliro','Tomiwa Ilesanmi','Mani Vijayakumar','Anmolpreet Kaur','Robert Kugber',
+  'Phillip Knutzen','Boma Obeahon','Regina Boumsong','Heena Boricha','Ashwin John',
+  'Mirian Uduehi','Ammar Syed','Rafiat Bolaji','Heena Patel','Dharmik Gangani',
+  'Faye Sai','Dhyey Patel','Hetvi Prajapati','Abisola Rahman','Adewale Muibi',
+  'Faris Mohamed','Jen (Jenil) Savaliya','Jiali Huang','Mahmoud Atwi','Raymond Liu',
+  'Riley Chamberlain','Shruti (Antony) Predhep','Xiang Wang','Calistus Agbili','Cameron Hillliard'
+];
+(function initSpotlight(){
+  const INTERVAL=60; // seconds between names
+  const names=SPOTLIGHT_PARTICIPANTS.slice();
+  if(!names.length) return;
+
+  const el=document.createElement('div');
+  el.className='spotlight';
+  el.id='spotlight';
+  el.innerHTML=
+    `<div class="spotlight-head">`+
+      `<span class="spotlight-title">🎤 On the spot</span>`+
+      `<button type="button" class="spotlight-collapse" id="spotlightCollapse" title="Collapse" aria-label="Collapse">–</button>`+
+    `</div>`+
+    `<div class="spotlight-body">`+
+      `<div class="spotlight-kicker">Next up</div>`+
+      `<div class="spotlight-name" id="spotlightName">—</div>`+
+      `<div class="spotlight-sub" id="spotlightSub">Next in <b><span id="spotlightCountdown">${INTERVAL}</span>s</b></div>`+
+      `<div class="spotlight-actions">`+
+        `<button type="button" class="btn secondary" id="spotlightNext">Next ⏭</button>`+
+        `<button type="button" class="btn secondary" id="spotlightPause">Pause ⏸</button>`+
+      `</div>`+
+    `</div>`;
+  document.body.appendChild(el);
+
+  const nameEl=el.querySelector('#spotlightName');
+  const cdEl=el.querySelector('#spotlightCountdown');
+  const subEl=el.querySelector('#spotlightSub');
+  const nextBtn=el.querySelector('#spotlightNext');
+  const pauseBtn=el.querySelector('#spotlightPause');
+  const collapseBtn=el.querySelector('#spotlightCollapse');
+
+  let bag=[];
+  let last=null;
+  let remaining=INTERVAL;
+  let paused=false;
+
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+    return a;
+  }
+  function refillBag(){
+    bag=shuffle(names.slice());
+    // avoid immediate repeat of the last shown name
+    if(names.length>1 && bag[0]===last){ bag.push(bag.shift()); }
+  }
+  function pickNext(){
+    if(!bag.length) refillBag();
+    const n=bag.shift();
+    last=n;
+    nameEl.textContent=n;
+    nameEl.classList.remove('pop'); void nameEl.offsetWidth; nameEl.classList.add('pop');
+  }
+  function advance(){ pickNext(); remaining=INTERVAL; updateCountdown(); }
+  function updateCountdown(){ if(cdEl) cdEl.textContent=String(remaining); }
+
+  advance();
+
+  const timer=setInterval(()=>{
+    if(paused || el.classList.contains('is-hidden')) return;
+    remaining--;
+    if(remaining<=0){ advance(); }
+    else updateCountdown();
+  },1000);
+
+  nextBtn.addEventListener('click',advance);
+  pauseBtn.addEventListener('click',()=>{
+    paused=!paused;
+    pauseBtn.textContent=paused?'Resume ▶':'Pause ⏸';
+    if(subEl) subEl.innerHTML=paused?'Paused':`Next in <b><span id="spotlightCountdown">${remaining}</span>s</b>`;
+    if(!paused){ cdEl=el.querySelector('#spotlightCountdown'); updateCountdown(); }
+  });
+  collapseBtn.addEventListener('click',()=>{
+    const collapsed=el.classList.toggle('collapsed');
+    collapseBtn.textContent=collapsed?'+':'–';
+    collapseBtn.title=collapsed?'Expand':'Collapse';
+  });
+
+  // Let other views (e.g. the ED game) hide/show the spotlight
+  window.__spotlightSetHidden=function(hidden){ el.classList.toggle('is-hidden', !!hidden); };
 })();
 </script>
 <script type="module">

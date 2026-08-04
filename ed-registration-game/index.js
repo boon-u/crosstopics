@@ -19,7 +19,9 @@ export function openEDRegistrationGame(opts = {}) {
   view.classList.add('active');
   view.hidden = false;
 
-  // Hide main chrome tabs title area slightly? Keep wrap + h1 visible for continuity.
+  // Hide the participant spotlight while the focused game view is open
+  if (typeof window.__spotlightSetHidden === 'function') window.__spotlightSetHidden(true);
+
   const host = document.getElementById('edGameHost');
   if (active) {
     active.destroy();
@@ -39,6 +41,8 @@ export function closeEDRegistrationGame() {
     active.destroy();
     active = null;
   }
+  // Restore the participant spotlight
+  if (typeof window.__spotlightSetHidden === 'function') window.__spotlightSetHidden(false);
   const view = document.getElementById('view-ed-game');
   if (view) {
     view.classList.remove('active');
