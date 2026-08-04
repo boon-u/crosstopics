@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ed-registration-game/ed-registration-game.css">
+<link rel="stylesheet" href="recurring-game/recurring-game.css">
 <style>
   :root{
     --ink:#0f172a; --muted:#64748b;
@@ -536,6 +537,10 @@
     <div id="edGameHost"></div>
   </div>
 
+  <div class="view" id="view-recurring-game" hidden>
+    <div id="recurringGameHost"></div>
+  </div>
+
   <div class="view" id="view-session">
     <div class="persist-bar" id="persistBar">
       <span class="persist-dot" id="persistDot"></span>
@@ -745,8 +750,8 @@ const SCENARIOS = [
           ['🏥','MHA inpatient care','Inpatient','MHA','PowerChart'],
           ['🏡','Discharge + follow-up','Inpatient','MHA','PowerChart']]},
   {title:'MHA Outpatient Group Program', sub:'Outpatient · Group Session',
-   steps:[['📩','Create group session','Group Session','Reg','SchAppBook'],
-          ['📝','Register','Outpatient','Reg','PM Office'],
+   steps:[['📩','Create recurring group session','Group Session','Reg','SchAppBook','','recurring'],
+          ['📝','Check-in and register the patient','Outpatient','Reg','SchAppBook'],
           ['👥','Group therapy session','Outpatient','MHA','PowerChart'],
           ['🔁','Recurring group series','Group Session','MHA','PowerChart'],
           ['✅','Program discharge','Outpatient','MHA','PowerChart']]},
@@ -1077,10 +1082,11 @@ function buildGroupsForScenario(scenarioIndex, groupCount, participants, history
 document.querySelectorAll('.tab').forEach(btn=>{
   btn.addEventListener('click',()=>{
     if(typeof window.__closeEDRegistrationGame==='function') window.__closeEDRegistrationGame();
+    if(typeof window.__closeRecurringGame==='function') window.__closeRecurringGame();
     document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.view').forEach(v=>{
       v.classList.remove('active');
-      if(v.id==='view-ed-game') v.hidden=true;
+      if(v.id==='view-ed-game'||v.id==='view-recurring-game') v.hidden=true;
     });
     btn.classList.add('active');
     const view=document.getElementById('view-'+btn.dataset.view);
@@ -1681,6 +1687,8 @@ function renderScenarioInto(target, sc, si, opts={}){
         : '';
       const launchHint=interactive==='edReg'
         ? `<div class="edg-card-hint" style="font-size:${Math.max(8.5,fPill)}px">▶ Tap to open flowchart</div>`
+        : interactive==='recurring'
+        ? `<div class="edg-card-hint" style="font-size:${Math.max(8.5,fPill)}px">▶ Tap to open the demo</div>`
         : '';
       note.innerHTML=
         (showLisa?lisaTrackerHtml():'')+
@@ -1694,16 +1702,20 @@ function renderScenarioInto(target, sc, si, opts={}){
         launchHint+
         doneBtn+
         `<span class="pill" style="font-size:${fPill}px;background:${s.ac}">${stream}</span>`;
-      if(interactive==='edReg'){
+      if(interactive==='edReg'||interactive==='recurring'){
         note.classList.add('note-interactive');
         note.setAttribute('role','button');
         note.setAttribute('tabindex','0');
-        note.setAttribute('aria-label','Open ED Registration flowchart scenario');
+        note.setAttribute('aria-label',interactive==='recurring'
+          ? 'Open the recurring appointments demo'
+          : 'Open ED Registration flowchart scenario');
         const openGame=e=>{
           // Ignore clicks on the Done stamp
           if(e.target.closest('.done-stamp')) return;
           e.preventDefault();
-          if(typeof window.__openEDRegistrationGame==='function'){
+          if(interactive==='recurring'){
+            if(typeof window.__openRecurringGame==='function') window.__openRecurringGame();
+          } else if(typeof window.__openEDRegistrationGame==='function'){
             window.__openEDRegistrationGame();
           }
         };
@@ -2412,6 +2424,10 @@ const SPOTLIGHT_PARTICIPANTS=[
   import { openEDRegistrationGame, closeEDRegistrationGame } from './ed-registration-game/index.js';
   window.__openEDRegistrationGame = openEDRegistrationGame;
   window.__closeEDRegistrationGame = closeEDRegistrationGame;
+
+  import { openRecurringGame, closeRecurringGame } from './recurring-game/index.js';
+  window.__openRecurringGame = openRecurringGame;
+  window.__closeRecurringGame = closeRecurringGame;
 </script>
 </body>
 </html>

@@ -1,0 +1,55 @@
+/* Recurring Appointments interactive module — ported from the registration-trail app */
+.rec-page{
+  --rec-ink:#14283C; --rec-inksoft:#4A5C70; --rec-teal:#0E9C8A; --rec-gold:#F2B53B;
+  --rec-line:#E7E2D6; --rec-green:#2FB872;
+  max-width:900px; margin:0 auto; padding:6px 4px 40px;
+  font-family:'Baloo 2', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color:var(--rec-ink);
+}
+.rec-topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin:2px 0 14px;
+}
+.rec-title{ margin:0; font-size:22px; font-weight:800; color:var(--rec-ink); letter-spacing:.2px; }
+.rec-title .rec-kicker{ display:block; font-size:11px; font-weight:800; letter-spacing:.6px;
+  text-transform:uppercase; color:var(--rec-teal); margin-bottom:2px; }
+.rec-exit{
+  border:1px solid var(--rec-line); background:#fff; color:var(--rec-inksoft);
+  border-radius:10px; padding:8px 14px; font-size:13px; font-weight:800; cursor:pointer;
+  display:inline-flex; align-items:center; gap:6px;
+}
+.rec-exit:hover{ background:#f8fafc; color:var(--rec-ink); }
+
+.rec-cardbox{
+  background:#F8FDFC; border:2px solid var(--rec-teal); border-radius:16px;
+  padding:20px; margin-bottom:14px;
+}
+.rec-rowhead{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.rec-rowhead .rec-ic{ font-size:18px; line-height:1; }
+.rec-rowhead .rec-lbl{ font-weight:800; color:var(--rec-teal); font-size:13px; letter-spacing:.3px; }
+.rec-lead{ margin:0 0 12px; color:var(--rec-ink); line-height:1.55; font-size:14px; }
+.rec-svg{ width:100%; height:auto; display:block; touch-action:none; user-select:none; }
+.rec-status{ text-align:center; margin:8px 0 12px; font-weight:800; font-size:14px; color:var(--rec-inksoft); }
+.rec-status.is-done{ color:var(--rec-green); }
+.rec-note{
+  background:#FDE68A; border:2px solid #CA8A04; border-radius:12px;
+  padding:12px 14px; font-size:14px; line-height:1.55; color:var(--rec-ink); font-weight:600;
+}
+
+/* interaction cues + flourishes (ported) */
+.rt-interactive-tap{ animation:rtTap 2.4s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+.rt-interactive-drag{ animation:rtDrag 1.7s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+@keyframes rtTap{0%,100%{transform:scale(1) rotate(0deg)}15%{transform:scale(1.03) rotate(-2deg)}30%{transform:scale(1.03) rotate(2deg)}45%{transform:scale(1) rotate(0deg)}}
+@keyframes rtDrag{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-5px) scale(1.08)}}
+.rec-enc-orbit{ animation:recEncOrbit 1.4s linear infinite; }
+.rec-enc-box-flash{ animation:recEncFlash .7s ease-in-out 4; }
+@keyframes recEncOrbit{ to{stroke-dashoffset:-40} }
+@keyframes recEncFlash{0%,100%{filter:drop-shadow(0 0 0 transparent)}50%{filter:drop-shadow(0 0 10px rgba(14,156,138,.55))}}
+
+@media (prefers-reduced-motion: reduce){
+  .rt-interactive-tap,.rt-interactive-drag,.rec-enc-orbit,.rec-enc-box-flash{ animation:none; }
+}
+@media (max-width:560px){
+  .rec-cardbox{ padding:14px; }
+  .rec-title{ font-size:19px; }
+}
