@@ -1,47 +1,49 @@
 /** Bird's-eye ED Registration workflow (IWK Visio layout). */
 
-export const WORLD = { width: 840, height: 900 };
+export const WORLD = { width: 1440, height: 560 };
 
 export const NODES = {
+  // ── Walk-in lane (top) ──
   start_walk: {
     id: 'start_walk',
-    x: 280, y: 70, w: 56, h: 56,
+    x: 70, y: 150, w: 56, h: 56,
     type: 'start',
     label: 'Start',
     role: null,
   },
   present: {
     id: 'present',
-    x: 280, y: 165, w: 150, h: 48,
+    x: 250, y: 150, w: 150, h: 48,
     type: 'process',
     label: 'Patient present in ED',
     role: null,
   },
   quick_reg: {
     id: 'quick_reg',
-    x: 280, y: 265, w: 138, h: 48,
+    x: 470, y: 150, w: 138, h: 48,
     type: 'task',
     label: 'ED Quick Reg',
     role: 'ED Nurse / Reg Clerk',
     checkpoint: true,
   },
+  // ── Paramedic lane (bottom) ──
   start_ems: {
     id: 'start_ems',
-    x: 640, y: 70, w: 56, h: 56,
+    x: 70, y: 360, w: 56, h: 56,
     type: 'start',
     label: 'Start',
     role: null,
   },
   paramedics: {
     id: 'paramedics',
-    x: 640, y: 165, w: 150, h: 48,
+    x: 250, y: 360, w: 150, h: 48,
     type: 'process',
     label: 'Paramedics called in',
     role: null,
   },
   pre_arrival: {
     id: 'pre_arrival',
-    x: 640, y: 265, w: 138, h: 48,
+    x: 470, y: 360, w: 138, h: 48,
     type: 'task',
     label: 'Pre-Arrival form',
     role: 'ED Nurse',
@@ -49,15 +51,16 @@ export const NODES = {
   },
   attach_pre: {
     id: 'attach_pre',
-    x: 640, y: 375, w: 148, h: 48,
+    x: 670, y: 360, w: 148, h: 48,
     type: 'task',
     label: 'Attach Pre-Arrival',
     role: 'ED Nurse',
     checkpoint: true,
   },
+  // ── Merge + decision ──
   decision: {
     id: 'decision',
-    x: 280, y: 455, w: 108, h: 108,
+    x: 870, y: 255, w: 108, h: 108,
     type: 'decision',
     label: "Is patient's condition critical?",
     role: null,
@@ -65,21 +68,21 @@ export const NODES = {
   },
   see_doctor: {
     id: 'see_doctor',
-    x: 280, y: 600, w: 128, h: 46,
+    x: 1080, y: 150, w: 128, h: 46,
     type: 'place',
     label: 'See Doctor',
     role: null,
   },
   waiting: {
     id: 'waiting',
-    x: 560, y: 500, w: 150, h: 46,
+    x: 1080, y: 370, w: 150, h: 46,
     type: 'place',
     label: 'send to waiting room',
     role: null,
   },
   triage: {
     id: 'triage',
-    x: 560, y: 620, w: 128, h: 48,
+    x: 1260, y: 370, w: 128, h: 48,
     type: 'task',
     label: 'ED Triage',
     role: 'ED Nurse',
@@ -88,7 +91,7 @@ export const NODES = {
   },
   complete: {
     id: 'complete',
-    x: 280, y: 740, w: 180, h: 48,
+    x: 1260, y: 255, w: 180, h: 48,
     type: 'task',
     label: 'ED Complete Registration',
     role: 'Registration Clerk',
@@ -96,38 +99,44 @@ export const NODES = {
   },
   end: {
     id: 'end',
-    x: 280, y: 845, w: 56, h: 56,
+    x: 1400, y: 255, w: 56, h: 56,
     type: 'end',
     label: 'End',
     role: null,
   },
 };
 
-/** Diamond top Y (center Y − half height). */
-const DEC_TOP = NODES.decision.y - NODES.decision.h / 2; // 401
+/** Diamond vertices (left→right horizontal layout). */
+const DEC_TOP = NODES.decision.y - NODES.decision.h / 2;    // 201
+const DEC_BOTTOM = NODES.decision.y + NODES.decision.h / 2; // 309
+const DEC_LEFT = NODES.decision.x - NODES.decision.w / 2;   // 816
 
-/** Orthogonal edges matching the Visio diagram. */
+/** Orthogonal edges — horizontal flow, left to right. */
 export const EDGES = [
+  // Walk-in lane
   { id: 'e_sw_present', from: 'start_walk', to: 'present' },
   { id: 'e_present_qr', from: 'present', to: 'quick_reg' },
-  { id: 'e_qr_dec', from: 'quick_reg', to: 'decision' },
-  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M280 265 H640 V375', cross: true },
+  { id: 'e_qr_dec', from: 'quick_reg', to: 'decision', d: `M470 150 H870 V${DEC_TOP}` },
+  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M470 150 H570 V360 H670', cross: true },
+  // Paramedic lane
   { id: 'e_se_par', from: 'start_ems', to: 'paramedics' },
   { id: 'e_par_pre', from: 'paramedics', to: 'pre_arrival' },
-  { id: 'e_pre_present', from: 'pre_arrival', to: 'present', d: 'M640 265 H280 V165', cross: true },
-  // Attach Pre-Arrival → down/left into the TOP of the diamond
-  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: `M640 375 V${DEC_TOP} H280` },
-  { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [238, 530] },
-  { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [400, 470], d: 'M280 455 H560 V500' },
-  { id: 'e_doc_comp', from: 'see_doctor', to: 'complete' },
+  { id: 'e_pre_present', from: 'pre_arrival', to: 'present', d: 'M470 360 H370 V150 H250', cross: true },
+  // Attach Pre-Arrival → up into the LEFT vertex of the diamond
+  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: `M670 360 V255 H${DEC_LEFT}` },
+  // Decision fork (shared stub then split up / down)
+  { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1006, 200], d: 'M870 255 H1000 V150 H1080' },
+  { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1006, 335], d: 'M870 255 H1000 V370 H1080' },
+  { id: 'e_doc_comp', from: 'see_doctor', to: 'complete', d: 'M1080 150 H1260 V255' },
   { id: 'e_wait_tri', from: 'waiting', to: 'triage' },
-  // Triage → down (clear of See Doctor) → left → up into diamond top (no overlap)
-  { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M560 620 V700 H120 V${DEC_TOP} H280` },
-  { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M560 620 V740 H280' },
+  // Triage → proceed straight up into complete
+  { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1260 370 V255' },
+  // Triage → recheck: down, back left, up into the BOTTOM vertex of the diamond
+  { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M1260 370 V500 H870 V${DEC_BOTTOM}` },
   { id: 'e_comp_end', from: 'complete', to: 'end' },
 ];
 
-export const EMS_BOX = { x: 530, y: 28, w: 230, h: 430 };
+export const EMS_BOX = { x: 40, y: 305, w: 770, h: 108 };
 
 /**
  * Linear next-node resolution for the active route / branch.

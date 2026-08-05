@@ -59,13 +59,23 @@
 
 .edg-svg{position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:1}
 .edg-edge{
-  fill:none;stroke:#111827;stroke-width:2.25;stroke-linecap:square;stroke-linejoin:miter;
-  opacity:.55;transition:opacity .25s ease, stroke .25s ease, stroke-width .25s ease;
+  fill:none;stroke:#cbd5e1;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  opacity:1;marker-end:url(#edgArrow);
+  transition:opacity .25s ease, stroke .25s ease, stroke-width .25s ease;
 }
-.edg-edge.is-active{opacity:1;stroke:#0f766e;stroke-width:2.8}
-.edg-edge.is-travelled{opacity:.9}
-.edg-edge.is-muted{opacity:.18}
-.edg-edge-label{font-size:12px;font-weight:800;fill:#334155}
+/* Secondary/cross connections stay quiet so they don't distract */
+.edg-edge[data-edge="e_qr_attach"],
+.edg-edge[data-edge="e_pre_present"]{stroke:#e2e8f0;stroke-width:1.75;stroke-dasharray:5 7}
+/* Path already travelled reads as a soft teal */
+.edg-edge.is-travelled{stroke:#2dd4bf;stroke-width:2.6;marker-end:url(#edgArrowDone)}
+/* The live/active route pops in teal with a bold arrowhead */
+.edg-edge.is-active{stroke:#0d9488;stroke-width:3.25;marker-end:url(#edgArrowActive);filter:drop-shadow(0 1px 1.5px rgba(13,148,136,.35))}
+/* The branch not taken fades right back */
+.edg-edge.is-muted{stroke:#e5e7eb;stroke-width:1.5;opacity:.6;stroke-dasharray:4 7;filter:none}
+.edg-edge-label{
+  font-size:13px;font-weight:800;fill:#0f766e;
+  paint-order:stroke;stroke:#f8fafc;stroke-width:3.5px;stroke-linejoin:round;
+}
 
 .edg-nodes{position:absolute;inset:0;z-index:2}
 .edg-node-wrap{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px}

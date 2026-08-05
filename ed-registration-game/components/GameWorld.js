@@ -101,8 +101,14 @@ export function renderGameWorld(container, state) {
            aria-hidden="true"></div>
       <svg class="edg-svg" width="${WORLD.width}" height="${WORLD.height}" viewBox="0 0 ${WORLD.width} ${WORLD.height}">
         <defs>
-          <marker id="edgArrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-            <path d="M0,0 L6,3 L0,6 Z" fill="#111827"></path>
+          <marker id="edgArrow" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+            <path d="M0,0 L8,3.5 L0,7 Z" fill="#94a3b8"></path>
+          </marker>
+          <marker id="edgArrowActive" markerWidth="11" markerHeight="11" refX="7.5" refY="4" orient="auto">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#0d9488"></path>
+          </marker>
+          <marker id="edgArrowDone" markerWidth="11" markerHeight="11" refX="7.5" refY="4" orient="auto">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#2dd4bf"></path>
           </marker>
         </defs>
         ${edgeEls}
