@@ -1,6 +1,6 @@
 /**
  * Keyboard navigation for the ED game.
- * Ignores input when typing, modifiers held, or a question modal needs answers.
+ * Ignores input when typing, modifiers held, or a question/branch modal is open.
  */
 
 export function attachGameKeyboardControls({
@@ -21,32 +21,17 @@ export function attachGameKeyboardControls({
 
     const state = getState();
     if (state.moving) return true;
-    if (state.challengeOpen && state.challengeMode === 'question') return true;
-    if (state.challengeOpen && state.challengeMode === 'changeConfirm') return true;
-    // Allow arrows for branch selection? Spec says arrows may select answers but must not move character.
-    if (state.challengeOpen && state.challengeMode === 'branch') return true;
-    if (state.challengeOpen && state.challengeMode === 'feedback') {
-      // Right arrow / Enter can continue — handled separately
-      return false;
-    }
+    if (state.challengeOpen) return true;
     return false;
   }
 
   function onKeyDown(e) {
-    if (shouldIgnore(e) && !(getState().challengeOpen && getState().challengeMode === 'feedback' && (e.key === 'ArrowRight' || e.key === 'Enter'))) {
-      // feedback: allow continue via right/enter
-      const st = getState();
-      if (!(st.challengeOpen && st.challengeMode === 'feedback' && (e.key === 'ArrowRight' || e.key === 'Enter'))) {
-        return;
-      }
-    } else if (shouldIgnore(e)) {
-      return;
-    }
+    if (shouldIgnore(e)) return;
 
     const st = getState();
     if (st.phase !== 'playing') return;
 
-    if (e.key === 'ArrowRight' || (e.key === 'Enter' && st.challengeMode === 'feedback')) {
+    if (e.key === 'ArrowRight' || e.key === 'Enter') {
       e.preventDefault();
       onNext();
       return;
@@ -54,15 +39,6 @@ export function attachGameKeyboardControls({
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       onBack();
-      return;
-    }
-    if (e.key === 'Escape') {
-      // Only close optional overlays — never discard an unanswered question
-      if (st.challengeOpen && (st.challengeMode === 'feedback' || st.challengeMode === 'branch')) {
-        e.preventDefault();
-        // Leave branch open requirement — Escape on branch shouldn't skip
-        if (st.challengeMode === 'feedback') onNext();
-      }
     }
   }
 

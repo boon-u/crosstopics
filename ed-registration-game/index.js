@@ -19,8 +19,8 @@ export function openEDRegistrationGame(opts = {}) {
   view.classList.add('active');
   view.hidden = false;
 
-  // Hide the participant spotlight while the focused game view is open
-  if (typeof window.__spotlightSetHidden === 'function') window.__spotlightSetHidden(true);
+  // Keep the participant spotlight visible on this screen for the host
+  if (typeof window.__spotlightSetHidden === 'function') window.__spotlightSetHidden(false);
 
   const host = document.getElementById('edGameHost');
   if (active) {
@@ -41,8 +41,6 @@ export function closeEDRegistrationGame() {
     active.destroy();
     active = null;
   }
-  // Restore the participant spotlight
-  if (typeof window.__spotlightSetHidden === 'function') window.__spotlightSetHidden(false);
   const view = document.getElementById('view-ed-game');
   if (view) {
     view.classList.remove('active');

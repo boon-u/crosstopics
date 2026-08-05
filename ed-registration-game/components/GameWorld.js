@@ -96,9 +96,6 @@ function movementPointsFor(fromId, toId) {
 
 function shapeMarkup(node, classes) {
   const label = escapeHtml(node.label).replace(/\n/g, '<br>');
-  const emj = node.emoji
-    ? `<span class="edg-emj" aria-hidden="true">${escapeHtml(node.emoji)}</span>`
-    : '';
   const role = node.role
     ? `<div class="edg-role-tag">${escapeHtml(node.role)}</div>`
     : '';
@@ -107,14 +104,14 @@ function shapeMarkup(node, classes) {
     return `
       <div class="edg-node edg-oval ${classes}" data-node="${node.id}"
            style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-        ${emj}<span class="edg-oval-label">${label}</span>
+        <span>${label}</span>
       </div>`;
   }
   if (node.type === 'decision') {
     return `
       <div class="edg-node edg-diamond ${classes}" data-node="${node.id}"
            style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-        <div class="edg-diamond-inner"><span>${emj}${label}</span></div>
+        <div class="edg-diamond-inner"><span>${label}</span></div>
       </div>`;
   }
   if (node.type === 'task') {
@@ -123,7 +120,7 @@ function shapeMarkup(node, classes) {
         ${role}
         <div class="edg-node edg-para ${classes}" data-node="${node.id}"
              style="width:${node.w}px;height:${node.h}px">
-          <span>${emj}${label}</span>
+          <span>${label}</span>
         </div>
       </div>`;
   }
@@ -131,15 +128,32 @@ function shapeMarkup(node, classes) {
     return `
       <div class="edg-node edg-place ${classes}" data-node="${node.id}"
            style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-        <span>${emj}${label}</span>
+        <span>${label}</span>
       </div>`;
   }
   // process
   return `
     <div class="edg-node edg-process ${classes}" data-node="${node.id}"
          style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-      <span>${emj}${label}</span>
+      <span>${label}</span>
     </div>`;
+}
+
+/** Resting / travel anchor just above a node's box (above role tags when present). */
+function hoverAnchor(node) {
+  const topPad = node.role ? 22 : 0;
+  return { x: node.x, y: node.y - node.h / 2 - topPad };
+}
+
+function iconsHtml(icons) {
+  return (icons || [])
+    .map(e => `<span class="edg-hover-emj">${escapeHtml(e)}</span>`)
+    .join('');
+}
+
+function setTravelerIcons(travelerEl, icons) {
+  const row = travelerEl?.querySelector('.edg-hover-row');
+  if (row) row.innerHTML = iconsHtml(icons);
 }
 
 export function renderGameWorld(container, state) {
@@ -150,7 +164,7 @@ export function renderGameWorld(container, state) {
 
   const edgeEls = EDGES.map(edge => {
     // Draw the arrow so its head lands on the border of the destination box.
-    const pts = clipStartFromBox(clipEndToBox(routePoints(edge), NODES[edge.to], 4), NODES[edge.from], 2);
+    const pts = clipStartFromBox(clipEndToBox(routePoints(edge), NODES[edge.to], 6), NODES[edge.from], 2);
     const d = pointsToPath(pts);
     const isActive = activeEdges.has(edge.id);
     const travelled = visited.has(edge.to) || edge.to === current;
@@ -162,7 +176,7 @@ export function renderGameWorld(container, state) {
     const label = edge.label
       ? `<text class="edg-edge-label" x="${edge.labelAt[0]}" y="${edge.labelAt[1]}">${escapeHtml(edge.label)}</text>`
       : '';
-    return `<path class="${cls}" data-edge="${edge.id}" d="${d}" marker-end="url(#edgArrow)" />${label}`;
+    return `<path class="${cls}" data-edge="${edge.id}" d="${d}" />${label}`;
   }).join('');
 
   const nodes = Object.values(NODES).map(node => {
@@ -175,28 +189,29 @@ export function renderGameWorld(container, state) {
     return shapeMarkup(node, classes);
   }).join('');
 
+  // Single traveler: only the current state's icons are ever shown (no band-aid).
   container.innerHTML = `
     <div class="edg-world" style="width:${WORLD.width}px;height:${WORLD.height}px">
       <div class="edg-ems-box" style="left:${EMS_BOX.x}px;top:${EMS_BOX.y}px;width:${EMS_BOX.w}px;height:${EMS_BOX.h}px"
            aria-hidden="true"></div>
       <svg class="edg-svg" width="${WORLD.width}" height="${WORLD.height}" viewBox="0 0 ${WORLD.width} ${WORLD.height}">
         <defs>
-          <marker id="edgArrow" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
-            <path d="M0,0 L8,3.5 L0,7 Z" fill="#94a3b8"></path>
+          <marker id="edgArrow" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="5" orient="auto">
+            <path d="M0,0 L12,5 L0,10 Z" fill="#94a3b8"></path>
           </marker>
-          <marker id="edgArrowActive" markerWidth="11" markerHeight="11" refX="7.5" refY="4" orient="auto">
-            <path d="M0,0 L9,4 L0,8 Z" fill="#0d9488"></path>
+          <marker id="edgArrowActive" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="5" orient="auto">
+            <path d="M0,0 L12,5 L0,10 Z" fill="#0d9488"></path>
           </marker>
-          <marker id="edgArrowDone" markerWidth="11" markerHeight="11" refX="7.5" refY="4" orient="auto">
-            <path d="M0,0 L9,4 L0,8 Z" fill="#2dd4bf"></path>
+          <marker id="edgArrowDone" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="5" orient="auto">
+            <path d="M0,0 L12,5 L0,10 Z" fill="#2dd4bf"></path>
           </marker>
         </defs>
         ${edgeEls}
       </svg>
       <div class="edg-nodes">${nodes}</div>
-      <div class="edg-character" id="edgCharacter" aria-hidden="true">
-        <div class="edg-char-sprite">🩹</div>
-        <div class="edg-char-shadow"></div>
+      <div class="edg-traveler" id="edgCharacter" aria-hidden="true" hidden>
+        <div class="edg-hover-row"></div>
+        <span class="edg-hover-arrow">▼</span>
       </div>
     </div>
   `;
@@ -219,15 +234,34 @@ export function fitWorldToViewport(viewport, host) {
   return scale;
 }
 
-export function placeCharacter(charEl, nodeId, { facing = 1 } = {}) {
+/**
+ * Park the traveler above a node with that node's icons.
+ * @param {{ pop?: boolean }} opts — when true, play the arrival pop animation
+ */
+export function placeCharacter(charEl, nodeId, { pop = false } = {}) {
   if (!charEl) return;
   const n = NODES[nodeId];
-  if (!n) { charEl.style.display = 'none'; return; }
+  if (!n) {
+    charEl.hidden = true;
+    charEl.style.display = 'none';
+    return;
+  }
+  const a = hoverAnchor(n);
+  setTravelerIcons(charEl, n.hover);
+  charEl.hidden = false;
   charEl.style.display = '';
-  charEl.style.left = `${n.x}px`;
-  charEl.style.top = `${n.y}px`;
-  charEl.style.setProperty('--facing', String(facing));
+  charEl.style.left = `${a.x}px`;
+  charEl.style.top = `${a.y}px`;
   charEl.dataset.node = nodeId;
+  charEl.classList.remove('is-traveling');
+  if (pop) {
+    charEl.classList.remove('is-pop');
+    // Force reflow so the pop animation restarts even on consecutive arrivals.
+    void charEl.offsetWidth;
+    charEl.classList.add('is-pop');
+    const clear = () => charEl.classList.remove('is-pop');
+    charEl.addEventListener('animationend', clear, { once: true });
+  }
 }
 
 export function prefersReducedMotion() {
@@ -235,8 +269,8 @@ export function prefersReducedMotion() {
 }
 
 /**
- * Animate the character along the actual arrow path from → to.
- * Resolves when the animation completes.
+ * Move the current state's icons along the arrow path; on arrival, swap to the
+ * destination state's icons and pop them in. Only one state's icons are visible.
  */
 export function animateCharacterMove(viewport, charEl, fromId, toId, { reverse = false } = {}) {
   const from = NODES[fromId];
@@ -244,10 +278,17 @@ export function animateCharacterMove(viewport, charEl, fromId, toId, { reverse =
   if (!charEl || !from || !to) return Promise.resolve();
 
   const reduced = prefersReducedMotion();
+  // Travel along the centre-line of the edge, but float slightly above the stroke.
   const pts = movementPointsFor(fromId, toId);
-  const d = pointsToPath(pts);
+  const floatY = 28;
+  const travelPts = pts.map(p => ({ x: p.x, y: p.y - floatY }));
+  // Start / end at the resting hover anchors so the hand-off is seamless.
+  const startA = hoverAnchor(from);
+  const endA = hoverAnchor(to);
+  travelPts[0] = { x: startA.x, y: startA.y };
+  travelPts[travelPts.length - 1] = { x: endA.x, y: endA.y };
+  const d = pointsToPath(travelPts);
 
-  // Measure the path with a throwaway SVG in world coordinates.
   const svg = document.createElementNS(SVGNS, 'svg');
   svg.setAttribute('width', '0'); svg.setAttribute('height', '0');
   svg.style.position = 'absolute'; svg.style.left = '-9999px'; svg.style.overflow = 'hidden';
@@ -257,31 +298,30 @@ export function animateCharacterMove(viewport, charEl, fromId, toId, { reverse =
   document.body.appendChild(svg);
   const len = path.getTotalLength() || 1;
 
+  // Carry the departing state's icons while traveling.
+  setTravelerIcons(charEl, from.hover);
+  charEl.hidden = false;
   charEl.style.display = '';
-  charEl.classList.add('is-walking');
-  charEl.classList.remove('is-reverse');
+  charEl.classList.add('is-traveling');
+  charEl.classList.remove('is-pop');
 
   const duration = reduced ? 80 : Math.min(1500, Math.max(520, len * 1.7));
 
   return new Promise(resolve => {
     const start = performance.now();
-    let prevX = from.x;
 
     function frame(now) {
       const t = Math.min(1, (now - start) / duration);
       const ease = reduced ? t : (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
       const p = path.getPointAtLength(len * ease);
-      const dx = p.x - prevX;
-      if (Math.abs(dx) > 0.4) charEl.style.setProperty('--facing', String(dx > 0 ? 1 : -1));
-      prevX = p.x;
       charEl.style.left = `${p.x}px`;
       charEl.style.top = `${p.y}px`;
       if (t < 1) requestAnimationFrame(frame);
       else {
-        charEl.classList.remove('is-walking', 'is-reverse');
+        charEl.classList.remove('is-traveling');
         svg.remove();
-        const facing = charEl.style.getPropertyValue('--facing') || '1';
-        placeCharacter(charEl, toId, { facing });
+        // Park on destination; page re-paint will pop the next state's icons.
+        placeCharacter(charEl, toId, { pop: false });
         resolve();
       }
     }

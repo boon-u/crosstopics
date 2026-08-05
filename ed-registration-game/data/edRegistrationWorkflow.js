@@ -1,128 +1,132 @@
 /** Bird's-eye ED Registration workflow (IWK Visio layout). */
 
-export const WORLD = { width: 1640, height: 560 };
+export const WORLD = { width: 1640, height: 596 };
+
+/** Same patient emoji used on the journey board (Lisa). */
+export const LISA = '👩';
 
 export const NODES = {
   // ── Paramedic / EMS lane (upper) ──
+  // hover: floating icons above the box (like Lisa on scenario cards), not inside the label
   start_ems: {
     id: 'start_ems',
-    x: 90, y: 90, w: 56, h: 56,
+    x: 90, y: 126, w: 56, h: 56,
     type: 'start',
     label: 'Start',
-    emoji: '🚑',
+    hover: ['🚑'],
     role: null,
   },
   paramedics: {
     id: 'paramedics',
-    x: 320, y: 90, w: 150, h: 48,
+    x: 320, y: 126, w: 150, h: 48,
     type: 'process',
     label: 'Paramedics called in',
-    emoji: '🚑',
+    hover: ['🚑', '📞'],
     role: null,
   },
   pre_arrival: {
     id: 'pre_arrival',
-    x: 560, y: 90, w: 138, h: 48,
+    x: 560, y: 126, w: 138, h: 48,
     type: 'task',
     label: 'Pre-Arrival form',
-    emoji: '📋',
+    hover: ['👩‍⚕️', '📄'],
     role: 'ED Nurse',
     checkpoint: true,
   },
   // ── Walk-in lane (lower, its Start sits below the EMS Start) ──
   start_walk: {
     id: 'start_walk',
-    x: 90, y: 250, w: 56, h: 56,
+    x: 90, y: 286, w: 56, h: 56,
     type: 'start',
     label: 'Start',
-    emoji: '🚶',
+    hover: [LISA],
     role: null,
   },
   // ── Shared trunk: both routes converge here ──
   present: {
     id: 'present',
-    x: 360, y: 250, w: 150, h: 48,
+    x: 360, y: 286, w: 150, h: 48,
     type: 'process',
     label: 'Patient present in ED',
-    emoji: '🏥',
+    hover: [LISA],
     role: null,
   },
   quick_reg: {
     id: 'quick_reg',
-    x: 610, y: 250, w: 138, h: 48,
+    x: 610, y: 286, w: 138, h: 48,
     type: 'task',
     label: 'ED Quick Reg',
-    emoji: '⚡',
+    hover: ['📅', LISA],
     role: 'ED Nurse / Reg Clerk',
     checkpoint: true,
   },
   // Paramedic-only extra step — lives inside the EMS box, fed from Quick Reg
   attach_pre: {
     id: 'attach_pre',
-    x: 760, y: 90, w: 148, h: 48,
+    x: 760, y: 126, w: 148, h: 48,
     type: 'task',
     label: 'Attach Pre-Arrival',
-    emoji: '📎',
+    hover: ['📅', '📎', '📄'],
     role: 'ED Nurse',
     checkpoint: true,
   },
   // ── Decision + downstream ──
   decision: {
     id: 'decision',
-    x: 900, y: 250, w: 108, h: 108,
+    x: 900, y: 286, w: 108, h: 108,
     type: 'decision',
     label: "Is patient's condition critical?",
-    emoji: '⚠️',
+    hover: ['👩‍⚕️', '🤔'],
     role: null,
     branchKey: 'criticality',
   },
   see_doctor: {
     id: 'see_doctor',
-    x: 1180, y: 150, w: 128, h: 46,
+    x: 1180, y: 186, w: 128, h: 46,
     type: 'place',
     label: 'See Doctor',
-    emoji: '🧑👩‍⚕️',
+    hover: [LISA, '👨‍⚕️'],
     role: null,
   },
   waiting: {
     id: 'waiting',
-    x: 1180, y: 360, w: 150, h: 46,
+    x: 1180, y: 396, w: 150, h: 46,
     type: 'place',
     label: 'send to waiting room',
-    emoji: '🪑',
+    hover: [LISA, '🪑'],
     role: null,
   },
   triage: {
     id: 'triage',
-    x: 1400, y: 360, w: 128, h: 48,
+    x: 1400, y: 396, w: 128, h: 48,
     type: 'task',
     label: 'ED Triage',
-    emoji: '🩺',
+    hover: ['🩺', '📊'],
     role: 'ED Nurse',
     checkpoint: true,
     branchKey: 'triageNext',
   },
   complete: {
     id: 'complete',
-    x: 1400, y: 250, w: 180, h: 48,
+    x: 1400, y: 286, w: 180, h: 48,
     type: 'task',
     label: 'ED Complete Registration',
-    emoji: '✅',
+    hover: ['📋', '✅'],
     role: 'Registration Clerk',
     checkpoint: true,
   },
   end: {
     id: 'end',
-    x: 1560, y: 250, w: 56, h: 56,
+    x: 1560, y: 286, w: 56, h: 56,
     type: 'end',
     label: 'End',
-    emoji: '🏁',
+    hover: ['🏁'],
     role: null,
   },
 };
 
-/** Diamond vertices — centre (900,250). */
-const DEC_BOTTOM = NODES.decision.y + NODES.decision.h / 2; // 304
+/** Diamond vertices — centre follows NODES.decision. */
+const DEC_BOTTOM = NODES.decision.y + NODES.decision.h / 2; // 340
 
 /** Orthogonal edges — horizontal flow, left to right. */
 export const EDGES = [
@@ -131,32 +135,32 @@ export const EDGES = [
   // Paramedic: Start → Paramedics → Pre-Arrival form → Patient present in ED
   { id: 'e_se_par', from: 'start_ems', to: 'paramedics' },
   { id: 'e_par_pre', from: 'paramedics', to: 'pre_arrival' },
-  { id: 'e_pre_present', from: 'pre_arrival', to: 'present', d: 'M560 90 V180 H360 V250' },
+  { id: 'e_pre_present', from: 'pre_arrival', to: 'present', d: 'M560 126 V216 H360 V286' },
   // Shared trunk
   { id: 'e_present_qr', from: 'present', to: 'quick_reg' },
   // Walk-in continues straight to the decision
   { id: 'e_qr_dec', from: 'quick_reg', to: 'decision' },
   // Paramedic detours up into the EMS box (Attach Pre-Arrival), then into the decision top
-  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M610 250 V150 H760 V90' },
-  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: 'M760 90 H900 V250' },
+  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M610 286 V186 H760 V126' },
+  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: 'M760 126 H900 V286' },
   // Decision fork (shared stub then split up / down)
-  { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1092, 198], d: 'M900 250 H1080 V150 H1180' },
-  { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1092, 332], d: 'M900 250 H1080 V360 H1180' },
-  { id: 'e_doc_comp', from: 'see_doctor', to: 'complete', d: 'M1180 150 H1400 V250' },
+  { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1092, 234], d: 'M900 286 H1080 V186 H1180' },
+  { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1092, 368], d: 'M900 286 H1080 V396 H1180' },
+  { id: 'e_doc_comp', from: 'see_doctor', to: 'complete', d: 'M1180 186 H1400 V286' },
   // Seen by the doctor with registration already done → straight to the exit
-  { id: 'e_doc_end', from: 'see_doctor', to: 'end', d: 'M1180 150 V108 H1560 V250', label: 'Reg. already done', labelAt: [1360, 98] },
+  { id: 'e_doc_end', from: 'see_doctor', to: 'end', d: 'M1180 186 V144 H1560 V286', label: 'Reg. already done', labelAt: [1360, 134] },
   { id: 'e_wait_tri', from: 'waiting', to: 'triage' },
   // Triage → proceed straight up into complete
-  { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1400 360 V250' },
+  { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1400 396 V286' },
   // Triage → recheck: down, back left, up into the BOTTOM vertex of the diamond
-  { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M1400 360 V520 H900 V${DEC_BOTTOM}` },
+  { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M1400 396 V556 H900 V${DEC_BOTTOM}` },
   // Complete Registration → End only once the patient has been seen by the doctor
-  { id: 'e_comp_end', from: 'complete', to: 'end', label: 'Seen by doctor', labelAt: [1500, 233] },
+  { id: 'e_comp_end', from: 'complete', to: 'end', label: 'Seen by doctor', labelAt: [1478, 248] },
   // Not seen yet → back to the waiting room; the triage loop keeps going
-  { id: 'e_comp_wait', from: 'complete', to: 'waiting', d: 'M1400 250 H1310 V490 H1180 V360', label: 'Not seen yet', labelAt: [1246, 505] },
+  { id: 'e_comp_wait', from: 'complete', to: 'waiting', d: 'M1400 286 H1310 V526 H1180 V396', label: 'Not seen yet', labelAt: [1246, 541] },
 ];
 
-export const EMS_BOX = { x: 40, y: 45, w: 800, h: 95 };
+export const EMS_BOX = { x: 40, y: 81, w: 800, h: 95 };
 
 /**
  * Linear next-node resolution for the active route / branch.

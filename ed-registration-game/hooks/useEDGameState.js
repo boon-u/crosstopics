@@ -3,7 +3,7 @@ import {
   resolveNextNodeId,
   startNodeForRoute,
 } from '../data/edRegistrationWorkflow.js';
-import { questionForNode, QUESTIONS } from '../data/edRegistrationQuestions.js';
+import { questionForNode } from '../data/edRegistrationQuestions.js';
 
 function blankState() {
   return {
@@ -19,11 +19,10 @@ function blankState() {
     selectedTriageBranch: null,
     answers: {},
     attempts: {},
-    score: 0,
     completionStatus: 'not_started',
     challengeOpen: false,
     challengeNodeId: null,
-    challengeMode: 'question', // question | feedback | branch | changeConfirm
+    challengeMode: 'question', // question | branch | changeConfirm
     challengeFeedback: null,
     moving: false,
     pendingContinue: false,
@@ -111,14 +110,8 @@ export function createEDGameState(onChange) {
     if (state.challengeOpen && state.challengeMode === 'question') {
       return { label: 'Answer to Continue', disabled: true, reason: 'question' };
     }
-    if (state.challengeOpen && state.challengeMode === 'feedback') {
-      return { label: 'Continue', disabled: false, reason: 'feedback' };
-    }
     if (state.challengeOpen && (state.challengeMode === 'branch' || state.challengeMode === 'changeConfirm')) {
       return { label: 'Choose a Route', disabled: true, reason: 'branch' };
-    }
-    if (state.pendingContinue) {
-      return { label: 'Continue', disabled: false, reason: 'pending' };
     }
     if (needsQuestion(state.currentNodeId)) {
       return { label: 'Answer to Continue', disabled: true, reason: 'need_question' };
@@ -127,7 +120,7 @@ export function createEDGameState(onChange) {
       return { label: 'Choose a Route', disabled: true, reason: 'need_branch' };
     }
     if (state.currentNodeId === 'end') {
-      return { label: 'Finish', disabled: false, reason: 'finish' };
+      return { label: 'End', disabled: true, reason: 'at_end' };
     }
     const atTip = state.currentHistoryIndex >= state.visitedHistory.length - 1;
     if (!atTip) {
@@ -179,9 +172,8 @@ export function createEDGameState(onChange) {
   }
 
   function closeChallengeOnly() {
-    // Informational close after feedback — does not discard unanswered questions
-    if (state.challengeMode === 'feedback' || state.challengeMode === 'branch') {
-      set({ challengeOpen: false, challengeNodeId: null, challengeFeedback: null, pendingContinue: state.challengeMode === 'feedback' });
+    if (state.challengeMode === 'branch') {
+      set({ challengeOpen: false, challengeNodeId: null, challengeFeedback: null, pendingContinue: false });
     }
   }
 
@@ -198,7 +190,6 @@ export function createEDGameState(onChange) {
         challengeFeedback: {
           correct: false,
           message: 'Not quite — try again.',
-          explanation: null,
         },
       });
       return;
@@ -207,24 +198,29 @@ export function createEDGameState(onChange) {
     const completed = state.completedCheckpointIds.includes(nodeId)
       ? state.completedCheckpointIds
       : [...state.completedCheckpointIds, nodeId];
-    const alreadyScored = !!state.answers[nodeId];
-    const score = alreadyScored ? state.score : state.score + (q.points || 10);
+    // Correct → close the question immediately (host explains live; no feedback popup).
     set({
       answers,
       attempts,
       completedCheckpointIds: completed,
-      score,
-      challengeMode: 'feedback',
-      challengeFeedback: {
-        correct: true,
-        message: 'Correct!',
-        explanation: q.explanation,
-      },
-      pendingContinue: true,
+      challengeOpen: false,
+      challengeNodeId: null,
+      challengeFeedback: null,
+      challengeMode: 'question',
+      pendingContinue: false,
     });
+    // After triage question, open the route chooser if needed.
+    if (needsBranch(state.currentNodeId)) {
+      set({
+        challengeOpen: true,
+        challengeNodeId: state.currentNodeId,
+        challengeMode: 'branch',
+      });
+    }
   }
 
   function continueAfterFeedback() {
+    // Kept for keyboard/UI compatibility — just closes and opens a branch if needed.
     set({
       challengeOpen: false,
       challengeNodeId: null,
@@ -232,7 +228,6 @@ export function createEDGameState(onChange) {
       challengeMode: 'question',
       pendingContinue: false,
     });
-    // After triage question, open branch chooser
     if (needsBranch(state.currentNodeId)) {
       set({
         challengeOpen: true,
@@ -329,20 +324,12 @@ export function createEDGameState(onChange) {
       delete answers.triage;
       delete answers.complete;
       patch.answers = answers;
-      patch.score = keepCompleted.reduce((sum, id) => {
-        const q = QUESTIONS[id];
-        return sum + (q && answers[id] ? (q.points || 10) : 0);
-      }, 0);
     } else {
       patch.selectedTriageBranch = pending.pendingBranch;
       const answers = { ...state.answers };
       delete answers.complete;
       patch.answers = answers;
       patch.completedCheckpointIds = keepCompleted.filter(id => id !== 'complete');
-      patch.score = patch.completedCheckpointIds.reduce((sum, id) => {
-        const q = QUESTIONS[id];
-        return sum + (q && answers[id] ? (q.points || 10) : 0);
-      }, 0);
     }
 
     set(patch);
@@ -362,28 +349,13 @@ export function createEDGameState(onChange) {
    */
   function requestNext() {
     const meta = nextButtonMeta();
-    if (meta.disabled && meta.reason !== 'feedback' && meta.reason !== 'pending') {
+    if (meta.disabled) {
       if (meta.reason === 'need_question' || meta.reason === 'question') {
         maybeOpenChallenge();
       } else if (meta.reason === 'need_branch' || meta.reason === 'branch' || meta.reason === 'blocked') {
         maybeOpenChallenge();
       }
       return { ok: false, action: 'blocked' };
-    }
-
-    if (state.challengeOpen && state.challengeMode === 'feedback') {
-      continueAfterFeedback();
-      return { ok: false, action: 'closed_feedback' };
-    }
-
-    if (state.pendingContinue) {
-      continueAfterFeedback();
-      return { ok: false, action: 'closed_feedback' };
-    }
-
-    if (state.currentNodeId === 'end') {
-      set({ phase: 'complete', completionStatus: 'completed', challengeOpen: false });
-      return { ok: false, action: 'finished' };
     }
 
     // Moving forward within existing history (after Back)
@@ -469,7 +441,7 @@ export function createEDGameState(onChange) {
   }
 
   function finishFromEnd() {
-    set({ phase: 'complete', completionStatus: 'completed' });
+    // No completion screen — stay on the diagram at End.
   }
 
   return {

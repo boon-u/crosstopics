@@ -7,7 +7,6 @@ import { renderProcessMiniMap } from './ProcessMiniMap.js';
 import { renderFullProcessModal } from './FullProcessModal.js';
 import { renderScenarioSelector } from './ScenarioSelector.js';
 import { renderCheckpointChallenge } from './CheckpointChallenge.js';
-import { renderCompletionSummary } from './CompletionSummary.js';
 
 window.__ED_NODE_LABELS = Object.fromEntries(
   Object.values(NODES).map(n => [n.id, n.label.replace(/\n/g, ' ')])
@@ -18,6 +17,7 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
   let fullProcessOpen = false;
   let detachKeyboard = null;
   let worldDirty = true;
+  let pendingIconPop = false;
 
   root.innerHTML = `
     <div class="edg-page" id="edgPageRoot">
@@ -106,6 +106,7 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
       game.commitMove(req.toId, { nextIndex: req.nextIndex });
     }
     worldDirty = true;
+    pendingIconPop = true;
     paint();
   }
 
@@ -129,13 +130,9 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
         const route = nodeEl.dataset.node === 'start_ems' ? 'paramedic' : 'walkin';
         game.beginFromStart(route);
         worldDirty = true;
+        pendingIconPop = true;
         paint();
-        queueMicrotask(() => {
-          const st2 = game.getState();
-          const char = worldHost.querySelector('#edgCharacter');
-          if (char && st2.currentNodeId) placeCharacter(char, st2.currentNodeId);
-          refitWorld();
-        });
+        queueMicrotask(refitWorld);
       };
       nodeEl.addEventListener('click', begin);
       nodeEl.setAttribute('role', 'button');
@@ -162,11 +159,13 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
     pageRoot?.classList.toggle('is-playing', state.phase === 'playing');
     introSlot.hidden = state.phase !== 'intro';
     playSlot.hidden = state.phase !== 'playing';
-    completeSlot.hidden = state.phase !== 'complete';
+    completeSlot.hidden = true;
 
     if (state.phase === 'playing') {
       renderGameWorld(worldHost, state);
-      placeCharacter(worldHost.querySelector('#edgCharacter'), state.currentNodeId);
+      const pop = pendingIconPop;
+      pendingIconPop = false;
+      placeCharacter(worldHost.querySelector('#edgCharacter'), state.currentNodeId, { pop });
       worldDirty = false;
       requestAnimationFrame(refitWorld);
 
@@ -184,25 +183,6 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
           state.currentNodeId === 'decision' && !!state.selectedCriticalityBranch && !state.challengeOpen;
         changeBtn.hidden = !showChange;
       }
-    }
-
-    if (state.phase === 'complete') {
-      renderCompletionSummary(completeSlot, state, {
-        onReplay: () => {
-          const route = state.selectedArrivalRoute;
-          game.replay(true);
-          game.selectArrivalRoute(route);
-          game.beginScenario();
-          worldDirty = true;
-          paint();
-        },
-        onOtherRoute: () => {
-          game.replay(false);
-          worldDirty = true;
-          paint();
-        },
-        onExit: () => onExit?.(),
-      });
     }
 
     renderCheckpointChallenge(modalHost, state, {

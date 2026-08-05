@@ -50,20 +50,6 @@ export function renderCheckpointChallenge(root, state, handlers) {
     return;
   }
 
-  if (mode === 'feedback') {
-    const fb = state.challengeFeedback || {};
-    body.innerHTML = `
-      <h3>${fb.correct ? '✓ Checkpoint complete' : 'Try again'}</h3>
-      <p class="edg-feedback-good">${escapeHtml(fb.message || '')}</p>
-      ${fb.explanation ? `<p>${escapeHtml(fb.explanation)}</p>` : ''}
-      <div class="btn-row">
-        <button type="button" class="btn" id="edgContinueChallenge">Continue</button>
-      </div>
-    `;
-    body.querySelector('#edgContinueChallenge')?.addEventListener('click', handlers.onContinueFeedback);
-    return;
-  }
-
   if (mode === 'changeConfirm') {
     body.innerHTML = `
       <h3>Change decision?</h3>

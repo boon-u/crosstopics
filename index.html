@@ -665,6 +665,22 @@
   </div>
 </div>
 
+<div class="modal-back" id="adminUnlockModal" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminUnlockTitle">
+    <h3 id="adminUnlockTitle">Unlock admin to continue</h3>
+    <p>Marking cards Done (and other edits) needs the facilitator passkey.</p>
+    <div class="field">
+      <label for="adminUnlockPass">Admin passkey</label>
+      <input id="adminUnlockPass" type="password" placeholder="Admin passkey" autocomplete="off">
+    </div>
+    <p class="status" id="adminUnlockStatus" style="margin:0;min-height:1.2em"></p>
+    <div class="btn-row">
+      <button class="btn secondary" type="button" id="adminUnlockCancel">Cancel</button>
+      <button class="btn" type="button" id="adminUnlockGo">Unlock</button>
+    </div>
+  </div>
+</div>
+
 <div class="name-gate" id="nameGate" aria-hidden="true">
   <div class="name-gate-card" role="dialog" aria-labelledby="nameGateTitle">
     <div style="font-size:36px;margin-bottom:8px">✍️</div>
@@ -1728,12 +1744,15 @@ function renderScenarioInto(target, sc, si, opts={}){
         btn.addEventListener('click',e=>{
           e.preventDefault();
           e.stopPropagation();
-          if(!isAdmin()){ requireAdmin(); return; }
           btn.blur();
           const key=stepKey(si, thisStep);
-          const currentlyDone=!!(memoryStore&&memoryStore.doneSteps&&memoryStore.doneSteps[key])
-            || note.classList.contains('done');
-          setStepDone(si, thisStep, !currentlyDone, note);
+          const toggle=()=>{
+            const currentlyDone=!!(memoryStore&&memoryStore.doneSteps&&memoryStore.doneSteps[key])
+              || note.classList.contains('done');
+            setStepDone(si, thisStep, !currentlyDone, note);
+          };
+          if(!isAdmin()){ requireAdmin(toggle); return; }
+          toggle();
         });
       }
       canvas.appendChild(note);
@@ -1797,14 +1816,65 @@ function renderSessionScenario(scenarioIndex, groups){
 const ADMIN_PASSKEY='b00n777';
 const ADMIN_SESSION_KEY='pjBoard.adminUnlocked';
 let sessionMode='viewer'; // 'viewer' | 'admin'
+let pendingAdminAction=null; // run after a successful unlock (e.g. mark Done)
 
 function isAdmin(){ return sessionMode==='admin'; }
-function requireAdmin(){
+function requireAdmin(thenFn){
   if(isAdmin()) return true;
+  pendingAdminAction=(typeof thenFn==='function')?thenFn:null;
   const hint=document.getElementById('modeHint');
   if(hint) hint.textContent='Admin passkey required to make changes.';
-  openAdminGate();
+  openAdminUnlockModal();
   return false;
+}
+
+function openAdminUnlockModal(){
+  const modal=document.getElementById('adminUnlockModal');
+  const passEl=document.getElementById('adminUnlockPass');
+  const status=document.getElementById('adminUnlockStatus');
+  if(!modal){
+    // Fallback: session-tab gate
+    openAdminGate();
+    return;
+  }
+  if(status) status.textContent='';
+  if(passEl) passEl.value='';
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden','false');
+  setTimeout(()=>passEl&&passEl.focus(),30);
+}
+function closeAdminUnlockModal(){
+  const modal=document.getElementById('adminUnlockModal');
+  if(!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden','true');
+  const status=document.getElementById('adminUnlockStatus');
+  if(status) status.textContent='';
+}
+function submitAdminUnlock(){
+  const passEl=document.getElementById('adminUnlockPass');
+  const status=document.getElementById('adminUnlockStatus');
+  const pass=passEl?passEl.value:'';
+  if(pass!==ADMIN_PASSKEY){
+    if(status) status.textContent='Wrong passkey. Still in view-only.';
+    return false;
+  }
+  sessionMode='admin';
+  sessionStorage.setItem(ADMIN_SESSION_KEY,'1');
+  if(passEl) passEl.value='';
+  closeAdminUnlockModal();
+  closeAdminGate();
+  applySessionMode();
+  // Keep the board usable — refresh Done affordances without jumping tabs
+  if(document.getElementById('view-board')?.classList.contains('active')){
+    try{ render(); }catch(_){}
+  } else {
+    syncSessionUI(getStore(), 'Admin unlocked.');
+  }
+  const pending=pendingAdminAction;
+  pendingAdminAction=null;
+  if(pending) setTimeout(()=>{ try{ pending(); }catch(err){ console.warn(err); } }, 0);
+  return true;
 }
 
 render();
@@ -1867,14 +1937,20 @@ function enterAdmin(pass){
   const passEl=document.getElementById('adminPass');
   if(passEl) passEl.value='';
   closeAdminGate();
+  closeAdminUnlockModal();
   applySessionMode();
   syncSessionUI(getStore(), 'Admin unlocked.');
+  const pending=pendingAdminAction;
+  pendingAdminAction=null;
+  if(pending) setTimeout(()=>{ try{ pending(); }catch(err){ console.warn(err); } }, 0);
   return true;
 }
 function lockAdmin(){
   sessionMode='viewer';
   sessionStorage.removeItem(ADMIN_SESSION_KEY);
+  pendingAdminAction=null;
   closeAdminGate();
+  closeAdminUnlockModal();
   applySessionMode();
   syncSessionUI(getStore(), 'Back to view-only.');
 }
@@ -2224,6 +2300,18 @@ document.getElementById('unlockAdminBtn').addEventListener('click', openAdminGat
 document.getElementById('cancelAdminBtn').addEventListener('click', closeAdminGate);
 document.getElementById('lockAdminBtn').addEventListener('click', lockAdmin);
 
+document.getElementById('adminUnlockGo')?.addEventListener('click', submitAdminUnlock);
+document.getElementById('adminUnlockCancel')?.addEventListener('click',()=>{
+  pendingAdminAction=null;
+  closeAdminUnlockModal();
+});
+document.getElementById('adminUnlockPass')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); submitAdminUnlock(); }
+});
+document.getElementById('adminUnlockModal')?.addEventListener('click',e=>{
+  if(e.target.id==='adminUnlockModal'){ pendingAdminAction=null; closeAdminUnlockModal(); }
+});
+
 document.getElementById('getCertBtn').addEventListener('click', openNameGate);
 document.getElementById('nameGateCancel').addEventListener('click', closeNameGate);
 document.getElementById('nameGateGo').addEventListener('click', submitCertName);
@@ -2361,7 +2449,7 @@ const SPOTLIGHT_PARTICIPANTS=[
   el.id='spotlight';
   el.title='Participant spotlight';
   el.innerHTML=
-    `<span class="spotlight-mic" aria-hidden="true">🎤</span>`+
+    `<span class="spotlight-mic" aria-hidden="true">👋</span>`+
     `<span class="spotlight-name" id="spotlightName">—</span>`+
     `<span class="spotlight-cd" id="spotlightCountdown">${INTERVAL}s</span>`+
     `<button type="button" class="spotlight-ic" id="spotlightNext" title="Next person" aria-label="Next person">⏭</button>`+

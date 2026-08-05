@@ -19,7 +19,7 @@ export function renderGameControls(el, state, meta, { onBack, onNext }) {
         <button type="button" class="${backCls}" id="edgBackBtn" ${meta.back.disabled ? 'disabled' : ''}>← Back</button>
         <div class="edg-step-center">
           <div class="edg-step-label">Current Step: <strong>${escapeHtml(nodeLabel)}</strong></div>
-          <div class="edg-step-meta">Step ${step} of ${total} · Role: ${escapeHtml(role)} · Checkpoints ${doneCount} ✓ · Score ${state.score}</div>
+          <div class="edg-step-meta">Step ${step} of ${total} · Role: ${escapeHtml(role)}${doneCount ? ` · Checkpoints ${doneCount} ✓` : ''}</div>
         </div>
         <button type="button" class="${nextCls}" id="edgNextBtn" ${meta.next.disabled ? 'disabled' : ''}>${escapeHtml(nextLabel)}${nextSuffix}</button>
       </div>
