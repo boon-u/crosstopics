@@ -64,9 +64,6 @@
   opacity:1;marker-end:url(#edgArrow);
   transition:stroke .25s ease, stroke-width .25s ease;
 }
-/* Secondary "attach" connectors are dashed but still clearly visible */
-.edg-edge[data-edge="e_qr_attach"],
-.edg-edge[data-edge="e_pre_present"]{stroke:#b6c2d2;stroke-dasharray:7 6}
 /* Path already walked reads as a solid soft teal */
 .edg-edge.is-travelled{stroke:#2dd4bf;stroke-width:2.75;marker-end:url(#edgArrowDone)}
 /* The route the participant picked glows and flows */

@@ -1,7 +1,7 @@
 import { NODES } from '../data/edRegistrationWorkflow.js';
 
 const MINI_ORDER_WALK = ['start_walk', 'present', 'quick_reg', 'decision', 'see_doctor', 'waiting', 'triage', 'complete', 'end'];
-const MINI_ORDER_EMS = ['start_ems', 'paramedics', 'pre_arrival', 'attach_pre', 'decision', 'see_doctor', 'waiting', 'triage', 'complete', 'end'];
+const MINI_ORDER_EMS = ['start_ems', 'paramedics', 'pre_arrival', 'present', 'quick_reg', 'attach_pre', 'decision', 'see_doctor', 'waiting', 'triage', 'complete', 'end'];
 
 export function renderProcessMiniMap(el, state) {
   const order = state.selectedArrivalRoute === 'paramedic' ? MINI_ORDER_EMS : MINI_ORDER_WALK;

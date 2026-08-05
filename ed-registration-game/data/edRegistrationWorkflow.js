@@ -1,66 +1,68 @@
 /** Bird's-eye ED Registration workflow (IWK Visio layout). */
 
-export const WORLD = { width: 1440, height: 560 };
+export const WORLD = { width: 1640, height: 560 };
 
 export const NODES = {
-  // ── Walk-in lane (top) ──
-  start_walk: {
-    id: 'start_walk',
-    x: 70, y: 150, w: 56, h: 56,
-    type: 'start',
-    label: 'Start',
-    role: null,
-  },
-  present: {
-    id: 'present',
-    x: 250, y: 150, w: 150, h: 48,
-    type: 'process',
-    label: 'Patient present in ED',
-    role: null,
-  },
-  quick_reg: {
-    id: 'quick_reg',
-    x: 470, y: 150, w: 138, h: 48,
-    type: 'task',
-    label: 'ED Quick Reg',
-    role: 'ED Nurse / Reg Clerk',
-    checkpoint: true,
-  },
-  // ── Paramedic lane (bottom) ──
+  // ── Paramedic / EMS lane (upper) ──
   start_ems: {
     id: 'start_ems',
-    x: 70, y: 360, w: 56, h: 56,
+    x: 90, y: 90, w: 56, h: 56,
     type: 'start',
     label: 'Start',
     role: null,
   },
   paramedics: {
     id: 'paramedics',
-    x: 250, y: 360, w: 150, h: 48,
+    x: 320, y: 90, w: 150, h: 48,
     type: 'process',
     label: 'Paramedics called in',
     role: null,
   },
   pre_arrival: {
     id: 'pre_arrival',
-    x: 470, y: 360, w: 138, h: 48,
+    x: 560, y: 90, w: 138, h: 48,
     type: 'task',
     label: 'Pre-Arrival form',
     role: 'ED Nurse',
     checkpoint: true,
   },
+  // ── Walk-in lane (lower, its Start sits below the EMS Start) ──
+  start_walk: {
+    id: 'start_walk',
+    x: 90, y: 250, w: 56, h: 56,
+    type: 'start',
+    label: 'Start',
+    role: null,
+  },
+  // ── Shared trunk: both routes converge here ──
+  present: {
+    id: 'present',
+    x: 360, y: 250, w: 150, h: 48,
+    type: 'process',
+    label: 'Patient present in ED',
+    role: null,
+  },
+  quick_reg: {
+    id: 'quick_reg',
+    x: 610, y: 250, w: 138, h: 48,
+    type: 'task',
+    label: 'ED Quick Reg',
+    role: 'ED Nurse / Reg Clerk',
+    checkpoint: true,
+  },
+  // Paramedic-only extra step, off Quick Reg
   attach_pre: {
     id: 'attach_pre',
-    x: 670, y: 360, w: 148, h: 48,
+    x: 700, y: 430, w: 148, h: 48,
     type: 'task',
     label: 'Attach Pre-Arrival',
     role: 'ED Nurse',
     checkpoint: true,
   },
-  // ── Merge + decision ──
+  // ── Decision + downstream ──
   decision: {
     id: 'decision',
-    x: 870, y: 255, w: 108, h: 108,
+    x: 900, y: 250, w: 108, h: 108,
     type: 'decision',
     label: "Is patient's condition critical?",
     role: null,
@@ -68,21 +70,21 @@ export const NODES = {
   },
   see_doctor: {
     id: 'see_doctor',
-    x: 1080, y: 150, w: 128, h: 46,
+    x: 1180, y: 150, w: 128, h: 46,
     type: 'place',
     label: 'See Doctor',
     role: null,
   },
   waiting: {
     id: 'waiting',
-    x: 1080, y: 370, w: 150, h: 46,
+    x: 1180, y: 360, w: 150, h: 46,
     type: 'place',
     label: 'send to waiting room',
     role: null,
   },
   triage: {
     id: 'triage',
-    x: 1260, y: 370, w: 128, h: 48,
+    x: 1400, y: 360, w: 128, h: 48,
     type: 'task',
     label: 'ED Triage',
     role: 'ED Nurse',
@@ -91,7 +93,7 @@ export const NODES = {
   },
   complete: {
     id: 'complete',
-    x: 1260, y: 255, w: 180, h: 48,
+    x: 1400, y: 250, w: 180, h: 48,
     type: 'task',
     label: 'ED Complete Registration',
     role: 'Registration Clerk',
@@ -99,65 +101,68 @@ export const NODES = {
   },
   end: {
     id: 'end',
-    x: 1400, y: 255, w: 56, h: 56,
+    x: 1560, y: 250, w: 56, h: 56,
     type: 'end',
     label: 'End',
     role: null,
   },
 };
 
-/** Diamond vertices (left→right horizontal layout). */
-const DEC_TOP = NODES.decision.y - NODES.decision.h / 2;    // 201
-const DEC_BOTTOM = NODES.decision.y + NODES.decision.h / 2; // 309
-const DEC_LEFT = NODES.decision.x - NODES.decision.w / 2;   // 816
+/** Diamond vertices — centre (900,250). */
+const DEC_BOTTOM = NODES.decision.y + NODES.decision.h / 2; // 304
 
 /** Orthogonal edges — horizontal flow, left to right. */
 export const EDGES = [
-  // Walk-in lane
+  // Walk-in: Start → Patient present in ED (straight into the shared trunk)
   { id: 'e_sw_present', from: 'start_walk', to: 'present' },
-  { id: 'e_present_qr', from: 'present', to: 'quick_reg' },
-  { id: 'e_qr_dec', from: 'quick_reg', to: 'decision', d: `M470 150 H870 V${DEC_TOP}` },
-  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M470 150 H570 V360 H670', cross: true },
-  // Paramedic lane
+  // Paramedic: Start → Paramedics → Pre-Arrival form → Patient present in ED
   { id: 'e_se_par', from: 'start_ems', to: 'paramedics' },
   { id: 'e_par_pre', from: 'paramedics', to: 'pre_arrival' },
-  { id: 'e_pre_present', from: 'pre_arrival', to: 'present', d: 'M470 360 H370 V150 H250', cross: true },
-  // Attach Pre-Arrival → up into the LEFT vertex of the diamond
-  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: `M670 360 V255 H${DEC_LEFT}` },
+  { id: 'e_pre_present', from: 'pre_arrival', to: 'present', d: 'M560 90 V180 H360 V250' },
+  // Shared trunk
+  { id: 'e_present_qr', from: 'present', to: 'quick_reg' },
+  // Walk-in continues straight to the decision
+  { id: 'e_qr_dec', from: 'quick_reg', to: 'decision' },
+  // Paramedic detours through Attach Pre-Arrival, then into the decision
+  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M610 250 V430 H700' },
+  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: 'M700 430 V250 H900' },
   // Decision fork (shared stub then split up / down)
-  { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1006, 200], d: 'M870 255 H1000 V150 H1080' },
-  { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1006, 335], d: 'M870 255 H1000 V370 H1080' },
-  { id: 'e_doc_comp', from: 'see_doctor', to: 'complete', d: 'M1080 150 H1260 V255' },
+  { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1092, 198], d: 'M900 250 H1080 V150 H1180' },
+  { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1092, 332], d: 'M900 250 H1080 V360 H1180' },
+  { id: 'e_doc_comp', from: 'see_doctor', to: 'complete', d: 'M1180 150 H1400 V250' },
   { id: 'e_wait_tri', from: 'waiting', to: 'triage' },
   // Triage → proceed straight up into complete
-  { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1260 370 V255' },
+  { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1400 360 V250' },
   // Triage → recheck: down, back left, up into the BOTTOM vertex of the diamond
-  { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M1260 370 V500 H870 V${DEC_BOTTOM}` },
+  { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M1400 360 V520 H900 V${DEC_BOTTOM}` },
   { id: 'e_comp_end', from: 'complete', to: 'end' },
 ];
 
-export const EMS_BOX = { x: 40, y: 305, w: 770, h: 108 };
+export const EMS_BOX = { x: 40, y: 45, w: 650, h: 95 };
 
 /**
  * Linear next-node resolution for the active route / branch.
+ * Both routes converge at "present"; only Quick Reg's next step differs.
  * Returns null when a decision is still required.
  */
 export function resolveNextNodeId(state) {
   const { currentNodeId, selectedArrivalRoute, selectedCriticalityBranch, selectedTriageBranch } = state;
   const id = currentNodeId;
 
+  // Route-specific lead-in to the shared trunk
   if (selectedArrivalRoute === 'walkin') {
     if (id === 'start_walk') return 'present';
-    if (id === 'present') return 'quick_reg';
-    if (id === 'quick_reg') return 'decision';
   }
-
   if (selectedArrivalRoute === 'paramedic') {
     if (id === 'start_ems') return 'paramedics';
     if (id === 'paramedics') return 'pre_arrival';
-    if (id === 'pre_arrival') return 'attach_pre';
-    if (id === 'attach_pre') return 'decision';
+    if (id === 'pre_arrival') return 'present';
   }
+
+  // Shared trunk
+  if (id === 'present') return 'quick_reg';
+  if (id === 'quick_reg') return selectedArrivalRoute === 'paramedic' ? 'attach_pre' : 'decision';
+  if (id === 'attach_pre') return 'decision';
 
   if (id === 'decision') {
     if (!selectedCriticalityBranch) return null;
@@ -189,7 +194,7 @@ export function routeEdgeIds(state) {
   if (route === 'walkin') {
     ['e_sw_present', 'e_present_qr', 'e_qr_dec'].forEach(id => active.add(id));
   } else if (route === 'paramedic') {
-    ['e_se_par', 'e_par_pre', 'e_attach_dec'].forEach(id => active.add(id));
+    ['e_se_par', 'e_par_pre', 'e_pre_present', 'e_present_qr', 'e_qr_attach', 'e_attach_dec'].forEach(id => active.add(id));
   }
 
   if (crit === 'critical') {

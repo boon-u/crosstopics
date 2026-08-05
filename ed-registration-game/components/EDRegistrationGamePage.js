@@ -176,7 +176,7 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
         // Preview: whole diagram is shown; participant clicks a Start to choose a route.
         attachStartHandlers();
         controlsSlot.innerHTML =
-          `<div class="edg-controls-hint">▶ Click a glowing green <b>Start</b> to begin — top row is <b>Walk-in</b>, bottom row is <b>Paramedic / EMS</b>.</div>`;
+          `<div class="edg-controls-hint">▶ Click a glowing green <b>Start</b> to begin — the upper Start is <b>Paramedic / EMS</b>, the lower Start is <b>Walk-in</b>.</div>`;
         changeBtn.hidden = true;
       } else {
         paintControlsOnly();
