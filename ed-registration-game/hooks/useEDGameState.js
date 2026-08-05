@@ -423,6 +423,11 @@ export function createEDGameState(onChange) {
         patch.selectedTriageBranch = null;
         patch.selectedCriticalityBranch = null;
       }
+      // Back in the waiting room (e.g. looping after Complete Registration without
+      // having seen a doctor): re-ask the triage decision so the loop stays interactive.
+      if (toId === 'waiting') {
+        patch.selectedTriageBranch = null;
+      }
       set(patch);
     } else if (typeof nextIndex === 'number') {
       set({

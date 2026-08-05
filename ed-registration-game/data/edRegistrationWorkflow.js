@@ -135,7 +135,10 @@ export const EDGES = [
   { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1400 360 V250' },
   // Triage → recheck: down, back left, up into the BOTTOM vertex of the diamond
   { id: 'e_tri_dec', from: 'triage', to: 'decision', branch: 'recheck', d: `M1400 360 V520 H900 V${DEC_BOTTOM}` },
-  { id: 'e_comp_end', from: 'complete', to: 'end' },
+  // Complete Registration → End only once the patient has been seen by the doctor
+  { id: 'e_comp_end', from: 'complete', to: 'end', label: 'Seen by doctor', labelAt: [1500, 233] },
+  // Not seen yet → back to the waiting room; the triage loop keeps going
+  { id: 'e_comp_wait', from: 'complete', to: 'waiting', d: 'M1400 250 H1310 V490 H1180 V360', label: 'Not seen yet', labelAt: [1246, 505] },
 ];
 
 export const EMS_BOX = { x: 40, y: 45, w: 800, h: 95 };
@@ -177,7 +180,11 @@ export function resolveNextNodeId(state) {
     return selectedTriageBranch === 'recheck' ? 'decision' : 'complete';
   }
 
-  if (id === 'complete') return 'end';
+  // The patient only leaves the ED once they've actually been seen by a doctor.
+  // Otherwise they go back to the waiting room and the triage loop continues.
+  if (id === 'complete') {
+    return (state.visitedHistory || []).includes('see_doctor') ? 'end' : 'waiting';
+  }
   return null;
 }
 
@@ -207,8 +214,9 @@ export function routeEdgeIds(state) {
     if (triage === 'proceed') active.add('e_tri_comp');
   }
 
+  const seen = state.visitedHistory.includes('see_doctor');
   if (state.visitedHistory.includes('complete') || state.currentNodeId === 'complete' || state.currentNodeId === 'end') {
-    active.add('e_comp_end');
+    active.add(seen ? 'e_comp_end' : 'e_comp_wait');
   }
 
   return active;
