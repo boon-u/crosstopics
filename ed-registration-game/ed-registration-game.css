@@ -92,6 +92,10 @@
   transition:opacity .25s ease, outline .2s ease, transform .2s ease;
 }
 .edg-node span{padding:4px 6px}
+/* Per-state emoji cue */
+.edg-emj{padding:0;margin-right:3px;font-size:1.25em;vertical-align:middle;line-height:1}
+.edg-oval .edg-emj{display:block;margin:0 0 1px;font-size:20px}
+.edg-oval-label{display:block;padding:0 2px;font-size:9px;font-weight:800;line-height:1.05}
 .edg-node.is-faded{opacity:.28}
 .edg-node.is-visited:not(.edg-diamond){outline:2px solid #94a3b8}
 .edg-node.is-current:not(.edg-diamond){
@@ -118,7 +122,7 @@
   position:relative;background:#fde68a;border:2px solid #d97706;
   transform:skewX(-12deg);border-radius:6px;
 }
-.edg-para span{transform:skewX(12deg);display:block}
+.edg-para > span{transform:skewX(12deg);display:block}
 .edg-place{
   border-radius:8px;background:#bbf7d0;border:2px solid #16a34a;
 }
@@ -133,7 +137,7 @@
   box-shadow:0 4px 10px rgba(15,23,42,.08);
   transition:box-shadow .2s ease, border-color .2s ease, background .2s ease;
 }
-.edg-diamond-inner span{
+.edg-diamond-inner > span{
   transform:rotate(-45deg);font-size:11px;padding:8px;max-width:88px;
 }
 .edg-diamond.is-visited .edg-diamond-inner{

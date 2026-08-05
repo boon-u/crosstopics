@@ -9,6 +9,7 @@ export const NODES = {
     x: 90, y: 90, w: 56, h: 56,
     type: 'start',
     label: 'Start',
+    emoji: '🚑',
     role: null,
   },
   paramedics: {
@@ -16,6 +17,7 @@ export const NODES = {
     x: 320, y: 90, w: 150, h: 48,
     type: 'process',
     label: 'Paramedics called in',
+    emoji: '🚑',
     role: null,
   },
   pre_arrival: {
@@ -23,6 +25,7 @@ export const NODES = {
     x: 560, y: 90, w: 138, h: 48,
     type: 'task',
     label: 'Pre-Arrival form',
+    emoji: '📋',
     role: 'ED Nurse',
     checkpoint: true,
   },
@@ -32,6 +35,7 @@ export const NODES = {
     x: 90, y: 250, w: 56, h: 56,
     type: 'start',
     label: 'Start',
+    emoji: '🚶',
     role: null,
   },
   // ── Shared trunk: both routes converge here ──
@@ -40,6 +44,7 @@ export const NODES = {
     x: 360, y: 250, w: 150, h: 48,
     type: 'process',
     label: 'Patient present in ED',
+    emoji: '🏥',
     role: null,
   },
   quick_reg: {
@@ -47,6 +52,7 @@ export const NODES = {
     x: 610, y: 250, w: 138, h: 48,
     type: 'task',
     label: 'ED Quick Reg',
+    emoji: '⚡',
     role: 'ED Nurse / Reg Clerk',
     checkpoint: true,
   },
@@ -56,6 +62,7 @@ export const NODES = {
     x: 760, y: 90, w: 148, h: 48,
     type: 'task',
     label: 'Attach Pre-Arrival',
+    emoji: '📎',
     role: 'ED Nurse',
     checkpoint: true,
   },
@@ -65,6 +72,7 @@ export const NODES = {
     x: 900, y: 250, w: 108, h: 108,
     type: 'decision',
     label: "Is patient's condition critical?",
+    emoji: '⚠️',
     role: null,
     branchKey: 'criticality',
   },
@@ -73,6 +81,7 @@ export const NODES = {
     x: 1180, y: 150, w: 128, h: 46,
     type: 'place',
     label: 'See Doctor',
+    emoji: '🧑👩‍⚕️',
     role: null,
   },
   waiting: {
@@ -80,6 +89,7 @@ export const NODES = {
     x: 1180, y: 360, w: 150, h: 46,
     type: 'place',
     label: 'send to waiting room',
+    emoji: '🪑',
     role: null,
   },
   triage: {
@@ -87,6 +97,7 @@ export const NODES = {
     x: 1400, y: 360, w: 128, h: 48,
     type: 'task',
     label: 'ED Triage',
+    emoji: '🩺',
     role: 'ED Nurse',
     checkpoint: true,
     branchKey: 'triageNext',
@@ -96,6 +107,7 @@ export const NODES = {
     x: 1400, y: 250, w: 180, h: 48,
     type: 'task',
     label: 'ED Complete Registration',
+    emoji: '✅',
     role: 'Registration Clerk',
     checkpoint: true,
   },
@@ -104,6 +116,7 @@ export const NODES = {
     x: 1560, y: 250, w: 56, h: 56,
     type: 'end',
     label: 'End',
+    emoji: '🏁',
     role: null,
   },
 };
@@ -130,6 +143,8 @@ export const EDGES = [
   { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1092, 198], d: 'M900 250 H1080 V150 H1180' },
   { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1092, 332], d: 'M900 250 H1080 V360 H1180' },
   { id: 'e_doc_comp', from: 'see_doctor', to: 'complete', d: 'M1180 150 H1400 V250' },
+  // Seen by the doctor with registration already done → straight to the exit
+  { id: 'e_doc_end', from: 'see_doctor', to: 'end', d: 'M1180 150 V108 H1560 V250', label: 'Reg. already done', labelAt: [1360, 98] },
   { id: 'e_wait_tri', from: 'waiting', to: 'triage' },
   // Triage → proceed straight up into complete
   { id: 'e_tri_comp', from: 'triage', to: 'complete', branch: 'proceed', d: 'M1400 360 V250' },
@@ -172,10 +187,19 @@ export function resolveNextNodeId(state) {
     return selectedCriticalityBranch === 'critical' ? 'see_doctor' : 'waiting';
   }
 
-  if (id === 'see_doctor') return 'complete';
+  // Registration is only ever completed once.
+  const registrationDone = (state.completedCheckpointIds || []).includes('complete');
+
+  // Once the patient has been seen by the doctor, they exit. If registration was
+  // already completed while waiting, they skip the Complete Registration step.
+  if (id === 'see_doctor') return registrationDone ? 'end' : 'complete';
+
   if (id === 'waiting') return 'triage';
 
   if (id === 'triage') {
+    // Registration already done → the patient just keeps getting re-assessed
+    // (back to the criticality check) until a doctor sees them. No re-registration.
+    if (registrationDone) return 'decision';
     if (!selectedTriageBranch) return null;
     return selectedTriageBranch === 'recheck' ? 'decision' : 'complete';
   }
@@ -192,31 +216,28 @@ export function startNodeForRoute(route) {
   return route === 'paramedic' ? 'start_ems' : 'start_walk';
 }
 
+/**
+ * Edges to glow: every edge the patient has actually walked (from the visited
+ * history), plus a preview of the next step from the current node once it's
+ * resolvable. This keeps the highlighted trail faithful to loops and skips.
+ */
 export function routeEdgeIds(state) {
-  const route = state.selectedArrivalRoute;
-  const crit = state.selectedCriticalityBranch;
-  const triage = state.selectedTriageBranch;
   const active = new Set();
+  const hist = state.visitedHistory || [];
+  const findEdge = (a, b) => EDGES.find(e => e.from === a && e.to === b);
 
-  if (route === 'walkin') {
-    ['e_sw_present', 'e_present_qr', 'e_qr_dec'].forEach(id => active.add(id));
-  } else if (route === 'paramedic') {
-    ['e_se_par', 'e_par_pre', 'e_pre_present', 'e_present_qr', 'e_qr_attach', 'e_attach_dec'].forEach(id => active.add(id));
+  for (let i = 0; i < hist.length - 1; i++) {
+    const e = findEdge(hist[i], hist[i + 1]);
+    if (e) active.add(e.id);
   }
 
-  if (crit === 'critical') {
-    active.add('e_dec_yes');
-    active.add('e_doc_comp');
-  } else if (crit === 'noncritical') {
-    active.add('e_dec_no');
-    active.add('e_wait_tri');
-    if (triage === 'recheck') active.add('e_tri_dec');
-    if (triage === 'proceed') active.add('e_tri_comp');
-  }
-
-  const seen = state.visitedHistory.includes('see_doctor');
-  if (state.visitedHistory.includes('complete') || state.currentNodeId === 'complete' || state.currentNodeId === 'end') {
-    active.add(seen ? 'e_comp_end' : 'e_comp_wait');
+  const cur = state.currentNodeId;
+  if (cur) {
+    const nxt = resolveNextNodeId(state);
+    if (nxt) {
+      const e = findEdge(cur, nxt);
+      if (e) active.add(e.id);
+    }
   }
 
   return active;

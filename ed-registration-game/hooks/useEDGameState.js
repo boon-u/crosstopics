@@ -90,6 +90,9 @@ export function createEDGameState(onChange) {
     if (node.branchKey === 'triageNext' && !state.selectedTriageBranch) {
       // Only after triage question is done
       if (questionForNode(nodeId) && !isCheckpointComplete(nodeId)) return false;
+      // Registration already done → no "proceed to complete" choice; the patient
+      // just gets re-assessed. Auto-route to the decision (no branch prompt).
+      if (isCheckpointComplete('complete')) return false;
       return true;
     }
     return false;
@@ -417,9 +420,11 @@ export function createEDGameState(onChange) {
         currentHistoryIndex: visitedHistory.length - 1,
         moving: false,
       };
-      // When returning to decision via triage recheck, always re-ask criticality —
-      // the patient's condition may have changed.
-      if (toId === 'decision' && state.selectedTriageBranch === 'recheck') {
+      // Returning to the decision from triage (either an explicit recheck, or the
+      // auto re-assessment once registration is already done): always re-ask
+      // criticality — the patient's condition may have changed, and this is the
+      // only way a waiting patient eventually gets sent to See Doctor.
+      if (toId === 'decision' && state.currentNodeId === 'triage') {
         patch.selectedTriageBranch = null;
         patch.selectedCriticalityBranch = null;
       }

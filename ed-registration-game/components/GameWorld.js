@@ -96,6 +96,9 @@ function movementPointsFor(fromId, toId) {
 
 function shapeMarkup(node, classes) {
   const label = escapeHtml(node.label).replace(/\n/g, '<br>');
+  const emj = node.emoji
+    ? `<span class="edg-emj" aria-hidden="true">${escapeHtml(node.emoji)}</span>`
+    : '';
   const role = node.role
     ? `<div class="edg-role-tag">${escapeHtml(node.role)}</div>`
     : '';
@@ -104,14 +107,14 @@ function shapeMarkup(node, classes) {
     return `
       <div class="edg-node edg-oval ${classes}" data-node="${node.id}"
            style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-        <span>${label}</span>
+        ${emj}<span class="edg-oval-label">${label}</span>
       </div>`;
   }
   if (node.type === 'decision') {
     return `
       <div class="edg-node edg-diamond ${classes}" data-node="${node.id}"
            style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-        <div class="edg-diamond-inner"><span>${label}</span></div>
+        <div class="edg-diamond-inner"><span>${emj}${label}</span></div>
       </div>`;
   }
   if (node.type === 'task') {
@@ -120,7 +123,7 @@ function shapeMarkup(node, classes) {
         ${role}
         <div class="edg-node edg-para ${classes}" data-node="${node.id}"
              style="width:${node.w}px;height:${node.h}px">
-          <span>${label}</span>
+          <span>${emj}${label}</span>
         </div>
       </div>`;
   }
@@ -128,14 +131,14 @@ function shapeMarkup(node, classes) {
     return `
       <div class="edg-node edg-place ${classes}" data-node="${node.id}"
            style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-        <span>${label}</span>
+        <span>${emj}${label}</span>
       </div>`;
   }
   // process
   return `
     <div class="edg-node edg-process ${classes}" data-node="${node.id}"
          style="left:${node.x - node.w / 2}px;top:${node.y - node.h / 2}px;width:${node.w}px;height:${node.h}px">
-      <span>${label}</span>
+      <span>${emj}${label}</span>
     </div>`;
 }
 
