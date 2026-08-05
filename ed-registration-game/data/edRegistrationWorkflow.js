@@ -50,10 +50,10 @@ export const NODES = {
     role: 'ED Nurse / Reg Clerk',
     checkpoint: true,
   },
-  // Paramedic-only extra step, off Quick Reg
+  // Paramedic-only extra step — lives inside the EMS box, fed from Quick Reg
   attach_pre: {
     id: 'attach_pre',
-    x: 700, y: 430, w: 148, h: 48,
+    x: 760, y: 90, w: 148, h: 48,
     type: 'task',
     label: 'Attach Pre-Arrival',
     role: 'ED Nurse',
@@ -123,9 +123,9 @@ export const EDGES = [
   { id: 'e_present_qr', from: 'present', to: 'quick_reg' },
   // Walk-in continues straight to the decision
   { id: 'e_qr_dec', from: 'quick_reg', to: 'decision' },
-  // Paramedic detours through Attach Pre-Arrival, then into the decision
-  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M610 250 V430 H700' },
-  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: 'M700 430 V250 H900' },
+  // Paramedic detours up into the EMS box (Attach Pre-Arrival), then into the decision top
+  { id: 'e_qr_attach', from: 'quick_reg', to: 'attach_pre', d: 'M610 250 V150 H760 V90' },
+  { id: 'e_attach_dec', from: 'attach_pre', to: 'decision', d: 'M760 90 H900 V250' },
   // Decision fork (shared stub then split up / down)
   { id: 'e_dec_yes', from: 'decision', to: 'see_doctor', branch: 'critical', label: 'Yes', labelAt: [1092, 198], d: 'M900 250 H1080 V150 H1180' },
   { id: 'e_dec_no', from: 'decision', to: 'waiting', branch: 'noncritical', label: 'No', labelAt: [1092, 332], d: 'M900 250 H1080 V360 H1180' },
@@ -138,7 +138,7 @@ export const EDGES = [
   { id: 'e_comp_end', from: 'complete', to: 'end' },
 ];
 
-export const EMS_BOX = { x: 40, y: 45, w: 650, h: 95 };
+export const EMS_BOX = { x: 40, y: 45, w: 800, h: 95 };
 
 /**
  * Linear next-node resolution for the active route / branch.
