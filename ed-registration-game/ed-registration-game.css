@@ -58,20 +58,25 @@
 }
 
 .edg-svg{position:absolute;inset:0;overflow:visible;pointer-events:none;z-index:1}
+/* Every connection stays fully visible — the whole map is readable at all times */
 .edg-edge{
-  fill:none;stroke:#cbd5e1;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  fill:none;stroke:#94a3b8;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
   opacity:1;marker-end:url(#edgArrow);
-  transition:opacity .25s ease, stroke .25s ease, stroke-width .25s ease;
+  transition:stroke .25s ease, stroke-width .25s ease;
 }
-/* Secondary/cross connections stay quiet so they don't distract */
+/* Secondary "attach" connectors are dashed but still clearly visible */
 .edg-edge[data-edge="e_qr_attach"],
-.edg-edge[data-edge="e_pre_present"]{stroke:#e2e8f0;stroke-width:1.75;stroke-dasharray:5 7}
-/* Path already travelled reads as a soft teal */
-.edg-edge.is-travelled{stroke:#2dd4bf;stroke-width:2.6;marker-end:url(#edgArrowDone)}
-/* The live/active route pops in teal with a bold arrowhead */
-.edg-edge.is-active{stroke:#0d9488;stroke-width:3.25;marker-end:url(#edgArrowActive);filter:drop-shadow(0 1px 1.5px rgba(13,148,136,.35))}
-/* The branch not taken fades right back */
-.edg-edge.is-muted{stroke:#e5e7eb;stroke-width:1.5;opacity:.6;stroke-dasharray:4 7;filter:none}
+.edg-edge[data-edge="e_pre_present"]{stroke:#b6c2d2;stroke-dasharray:7 6}
+/* Path already walked reads as a solid soft teal */
+.edg-edge.is-travelled{stroke:#2dd4bf;stroke-width:2.75;marker-end:url(#edgArrowDone)}
+/* The route the participant picked glows and flows */
+.edg-edge.is-active{
+  stroke:#0d9488;stroke-width:3.25;stroke-dasharray:11 8;
+  marker-end:url(#edgArrowActive);
+  filter:drop-shadow(0 0 4px rgba(13,148,136,.6));
+  animation:edgFlow 900ms linear infinite;
+}
+@keyframes edgFlow{to{stroke-dashoffset:-19}}
 .edg-edge-label{
   font-size:13px;font-weight:800;fill:#0f766e;
   paint-order:stroke;stroke:#f8fafc;stroke-width:3.5px;stroke-linejoin:round;
@@ -98,6 +103,13 @@
   z-index:3;
 }
 .edg-node.is-done:not(.edg-diamond){outline-color:#16a34a}
+/* Start nodes are the entry points in the preview — invite a click */
+.edg-node.is-startable{cursor:pointer;z-index:4;animation:edgStartPulse 1.5s ease-in-out infinite}
+.edg-node.is-startable:hover,.edg-node.is-startable:focus-visible{transform:scale(1.1);outline:none}
+@keyframes edgStartPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(251,146,60,.55),0 4px 10px rgba(15,23,42,.12)}
+  50%{box-shadow:0 0 0 10px rgba(251,146,60,0),0 4px 10px rgba(15,23,42,.12)}
+}
 
 .edg-oval{
   border-radius:50%;background:#fb923c;border:2px solid #c2410c;color:#fff;
@@ -167,6 +179,8 @@
 @media (prefers-reduced-motion:reduce){
   .edg-character.is-walking .edg-char-sprite{animation:none}
   .edg-node.is-current:not(.edg-diamond){transform:none}
+  .edg-edge.is-active{animation:none}
+  .edg-node.is-startable{animation:none}
 }
 
 .edg-play-slot{

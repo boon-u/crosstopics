@@ -123,6 +123,29 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
     runMove(req);
   }
 
+  function attachStartHandlers() {
+    worldHost.querySelectorAll('.edg-node.is-startable').forEach(nodeEl => {
+      const begin = () => {
+        const route = nodeEl.dataset.node === 'start_ems' ? 'paramedic' : 'walkin';
+        game.beginFromStart(route);
+        worldDirty = true;
+        paint();
+        queueMicrotask(() => {
+          const st2 = game.getState();
+          const char = worldHost.querySelector('#edgCharacter');
+          if (char && st2.currentNodeId) placeCharacter(char, st2.currentNodeId);
+          refitWorld();
+        });
+      };
+      nodeEl.addEventListener('click', begin);
+      nodeEl.setAttribute('role', 'button');
+      nodeEl.setAttribute('tabindex', '0');
+      nodeEl.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); begin(); }
+      });
+    });
+  }
+
   function paintControlsOnly() {
     const state = game.getState();
     const node = NODES[state.currentNodeId];
@@ -141,23 +164,6 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
     playSlot.hidden = state.phase !== 'playing';
     completeSlot.hidden = state.phase !== 'complete';
 
-    if (state.phase === 'intro') {
-      renderScenarioSelector(introSlot, state, {
-        onSelect: (id) => { game.selectArrivalRoute(id); paint(); },
-        onBegin: () => {
-          game.beginScenario();
-          worldDirty = true;
-          paint();
-          queueMicrotask(() => {
-            const st2 = game.getState();
-            const char = worldHost.querySelector('#edgCharacter');
-            if (char && st2.currentNodeId) placeCharacter(char, st2.currentNodeId);
-            refitWorld();
-          });
-        },
-      });
-    }
-
     if (state.phase === 'playing') {
       renderGameWorld(worldHost, state);
       placeCharacter(worldHost.querySelector('#edgCharacter'), state.currentNodeId);
@@ -165,11 +171,19 @@ export function mountEDRegistrationGamePage(root, { onExit } = {}) {
       requestAnimationFrame(refitWorld);
 
       renderProcessMiniMap(miniSlot, state);
-      paintControlsOnly();
 
-      const showChange =
-        state.currentNodeId === 'decision' && !!state.selectedCriticalityBranch && !state.challengeOpen;
-      changeBtn.hidden = !showChange;
+      if (!state.currentNodeId) {
+        // Preview: whole diagram is shown; participant clicks a Start to choose a route.
+        attachStartHandlers();
+        controlsSlot.innerHTML =
+          `<div class="edg-controls-hint">▶ Click a glowing green <b>Start</b> to begin — top row is <b>Walk-in</b>, bottom row is <b>Paramedic / EMS</b>.</div>`;
+        changeBtn.hidden = true;
+      } else {
+        paintControlsOnly();
+        const showChange =
+          state.currentNodeId === 'decision' && !!state.selectedCriticalityBranch && !state.challengeOpen;
+        changeBtn.hidden = !showChange;
+      }
     }
 
     if (state.phase === 'complete') {

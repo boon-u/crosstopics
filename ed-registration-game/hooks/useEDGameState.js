@@ -7,7 +7,9 @@ import { questionForNode, QUESTIONS } from '../data/edRegistrationQuestions.js';
 
 function blankState() {
   return {
-    phase: 'intro', // intro | playing | complete
+    // 'playing' with a null currentNodeId is the preview: the whole diagram is shown
+    // and the participant picks a Start node to choose their route.
+    phase: 'playing', // playing | complete
     currentNodeId: null,
     visitedHistory: [],
     currentHistoryIndex: -1,
@@ -49,6 +51,12 @@ export function createEDGameState(onChange) {
 
   function selectArrivalRoute(routeId) {
     set({ selectedArrivalRoute: routeId });
+  }
+
+  /** Preview → begin the chosen route by clicking a Start node. */
+  function beginFromStart(routeId) {
+    set({ selectedArrivalRoute: routeId });
+    beginScenario();
   }
 
   function beginScenario() {
@@ -445,7 +453,8 @@ export function createEDGameState(onChange) {
 
   function replay(keepRoute) {
     const route = keepRoute ? state.selectedArrivalRoute : null;
-    state = { ...blankState(), selectedArrivalRoute: route, phase: route ? 'intro' : 'intro' };
+    // Back to the whole-diagram preview (phase 'playing' with a null current node).
+    state = { ...blankState(), selectedArrivalRoute: route };
     emit();
   }
 
@@ -457,6 +466,7 @@ export function createEDGameState(onChange) {
     getState,
     subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     selectArrivalRoute,
+    beginFromStart,
     beginScenario,
     currentNode,
     nextButtonMeta,
