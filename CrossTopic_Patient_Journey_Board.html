@@ -84,6 +84,25 @@
     border-style:solid;border-color:#16a34a;background:#dcfce7;color:#166534;
   }
   .note .done-stamp.is-done .stamp-mark{background:#16a34a;color:#fff;transform:scale(1.08) rotate(-8deg)}
+  .note .auto-stamp{
+    align-self:flex-start;margin-top:4px;border:2px solid #94a3b8;background:rgba(255,255,255,.55);
+    color:#475569;border-radius:999px;padding:3px 9px 3px 6px;
+    display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:10.5px;font-weight:800;
+    pointer-events:none;
+  }
+  .note .auto-stamp .stamp-mark{
+    width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
+    background:#e2e8f0;color:#475569;font-size:10px;line-height:1;
+  }
+  .journey-end-note{
+    position:absolute;z-index:5;pointer-events:none;
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 10px;border-radius:999px;
+    background:#f8fafc;border:1px dashed #94a3b8;
+    color:#475569;font-size:11px;font-weight:800;white-space:nowrap;
+    box-shadow:0 2px 8px rgba(15,23,42,.08);
+  }
+  .journey-end-note .jen-ico{font-size:12px;line-height:1}
   .note.celebrating{animation:note-pop .55s cubic-bezier(.2,1.3,.3,1)}
   .note.celebrating .done-stamp .stamp-mark{animation:stamp-slam .45s cubic-bezier(.2,1.6,.3,1)}
   .lisa-tracker{
@@ -575,7 +594,6 @@
         <span class="fac-chip">Boon</span>
         <span class="fac-chip">Bode</span>
         <span class="fac-chip">Mahak</span>
-        <span class="fac-chip">Yuliana</span>
         <span class="fac-chip">Yaw</span>
         <span class="fac-chip">Rijo</span>
         <span class="fac-chip">Via</span>
@@ -738,7 +756,7 @@ const STREAM = {
   Lab:{bg:'var(--lab-bg)',ac:'#15803D',name:'Lab',facilitator:'Bode'},
   DI:{bg:'var(--di-bg)',ac:'#6D28D9',name:'Diagnostic Imaging',facilitator:'Harjot'},
   Nursing:{bg:'var(--nur-bg)',ac:'#0F766E',name:'Nursing',facilitator:'Via'},
-  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Mahak/Yuliana'},
+  MHA:{bg:'var(--mha-bg)',ac:'#C2410C',name:'Mental Health & Addictions',facilitator:'Mahak'},
   EMS:{bg:'var(--ems-bg)',ac:'#0891B2',name:'EMS / Paramedic',facilitator:'TBD'},
   Peri:{bg:'var(--peri-bg)',ac:'#DB2777',name:'Perioperative (OR)',facilitator:'Rijo'},
   Provider:{bg:'var(--prov-bg)',ac:'#B45309',name:'Providers',facilitator:'Mahak'},
@@ -778,22 +796,25 @@ const SCENARIOS = [
           ['🫧','Ultrasound','DI','DI','Department Order Entry'],
           ['📤','Results to provider','Lab / DI','Reg','PowerChart'],
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
+  {title:'MHA Clinic → Future Lab & DI', sub:'Outpatient · Register → Document → Orders → Lab → DI',
+   endNote:'⚡ Then auto-discharged (outpatient — no discharge visit)',
+   steps:[['📝','Register patient','Outpatient','Reg','SchAppBook'],
+          ['💬','MHA Provider documentation','Outpatient','MHA','PowerChart'],
+          ['📋','Place future orders','Outpatient','MHA','PowerChart'],
+          ['🩸','Lab','Lab','Lab','Department Order Entry'],
+          ['🩻','DI','DI','DI','Department Order Entry']]},
   {title:'MVA Trauma — Emergency Surgery', sub:'Pre-hospital → Emergency → Inpatient → OR',
-   wrapAfter:4,
+   wrapAfter:3,
    tips:{
      0:['Brief about flow','Pre-arrival','ED Quick Reg','Attach Pre-arrival to reg'],
      1:['Assessment documentation','Lab and DI orders','Admission orders'],
-     2:['Collect specimen','Specimen login','Result entry','Order result viewer'],
-     3:['Place order','Setup online worklist','Start and complete exam'],
    },
    arrowLabels:{
-     3:['Admission · Emergency → Inpatient','CapMan · PAO · handover'],
-     4:['Transfer · Inpatient → OR','CapMan'],
+     1:['Admission · Emerg → Inpatient','CapMan · PAO · handover'],
+     2:['Transfer · Inpatient → OR','CapMan'],
    },
    steps:[['🚑','Pre-arrival and Registration','Pre-hospital','Reg','','','edReg'],
           ['🚨','Trauma Activation, Documentation & Orders','Emergency','ED'],
-          ['🩸','Specimen collection','Lab','Lab'],
-          ['🩻','Trauma imaging (CT)','DI','DI'],
           ['🏥','Inpatient care & pre-op','Inpatient','Nursing'],
           ['🔪','Intra Op - surgery','Inpatient · OR','Peri'],
           ['🛌','PACU','Inpatient','Peri'],
@@ -801,6 +822,10 @@ const SCENARIOS = [
 ];
 function visibleScenarios(){
   return SCENARIOS.map((sc,i)=>({sc,i})).filter(x=>!x.sc.hidden);
+}
+/** Auto steps (e.g. outpatient auto-discharge): no facilitator, no Done stamp. */
+function isAutoStep(st){
+  return !!(st && st[6]==='auto');
 }
 function firstVisibleScenarioIndex(){
   const v=visibleScenarios();
@@ -1133,9 +1158,11 @@ const board=document.getElementById('board');
 const SVGNS='http://www.w3.org/2000/svg';
 function drawArrowLabel(svg, cx, cy, lines, col){
   if(!lines) return;
-  const arr=Array.isArray(lines)?lines:[lines];
+  const arr=Array.isArray(lines)?lines:(lines.lines||[lines]);
+  const dy=(!Array.isArray(lines) && lines && typeof lines.dy==='number')?lines.dy:0;
+  cy=cy+dy;
   const fs=[11.5,9.5];
-  const maxChars=Math.max(...arr.map(l=>l.length));
+  const maxChars=Math.max(...arr.map(l=>String(l).length));
   const w=Math.max(78, maxChars*6.1+18);
   const lh=13;
   const h=8 + arr.length*lh + 2;
@@ -1179,7 +1206,8 @@ function drawArrow(svg, x1,y1,x2,y2, col, rand, label){
   tri.setAttribute('points',`${axp} ${ayp}, ${axp-ah*Math.cos(ang-0.5)} ${ayp-ah*Math.sin(ang-0.5)}, ${axp-ah*Math.cos(ang+0.5)} ${ayp-ah*Math.sin(ang+0.5)}`);
   tri.setAttribute('fill',col); tri.setAttribute('opacity','0.85');
   svg.appendChild(tri);
-  if(label) drawArrowLabel(svg, (x1+x2)/2, (y1+y2)/2, label, col);
+  // Sit the label above the curve so it doesn't collide with card edges in tight gaps
+  if(label) drawArrowLabel(svg, (x1+x2)/2, (y1+y2)/2 - 30, label, col);
 }
 
 function streamToGroupIndex(groups, stream){
@@ -1216,14 +1244,15 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W, label, laneY){
       `${tipX+ah*0.55} ${tipY-ah}`);
     tri.setAttribute('fill',col); tri.setAttribute('opacity','0.88');
     svg.appendChild(tri);
-    if(label) drawArrowLabel(svg, xm, laneY, label, col);
+    if(label) drawArrowLabel(svg, xm, laneY + 26, label, col);
     return;
   }
   // Smooth U/S from end of one row into the start of the next (G1-continuous, no kink)
   const x1=a.x+cardW*0.62, y1=a.y+cardH;
   const x2=b.x+cardW*0.38, y2=b.y;
   const span=Math.max(40, y2-y1);
-  const midY=y1+span*0.52;
+  // Keep the belly lower so a label can sit in the gutter without covering cards
+  const midY=y1+span*0.62;
   // Side bulge so the curve breathes, but tangents stay continuous at the bottom
   const bulge=Math.min(56, Math.max(28, Math.abs(x1-x2)*0.08));
   const cx1=Math.min(W-16, x1+bulge);
@@ -1252,7 +1281,8 @@ function drawWrapArrow(svg, a, b, cardW, cardH, col, W, label, laneY){
     `${tipX-ah*Math.cos(ang+0.5)} ${tipY-ah*Math.sin(ang+0.5)}`);
   tri.setAttribute('fill',col); tri.setAttribute('opacity','0.88');
   svg.appendChild(tri);
-  if(label) drawArrowLabel(svg, xm, midY, label, col);
+  // Label sits just under the belly, in the inter-row gutter
+  if(label) drawArrowLabel(svg, xm, midY + 24, label, col);
 }
 
 function stepKey(si, stepIdx){ return si+':'+stepIdx; }
@@ -1420,6 +1450,7 @@ function firstUndoneStep(si, doneSteps){
   if(!sc) return -1;
   const ds=doneSteps||{};
   for(let i=0;i<sc.steps.length;i++){
+    if(isAutoStep(sc.steps[i])) continue;
     if(!ds[stepKey(si,i)]) return i;
   }
   return -1;
@@ -1483,6 +1514,7 @@ function isScenarioFullyDone(si, doneSteps){
   if(!sc||!sc.steps.length) return false;
   const ds=doneSteps||(memoryStore&&memoryStore.doneSteps)||{};
   for(let i=0;i<sc.steps.length;i++){
+    if(isAutoStep(sc.steps[i])) continue;
     if(!ds[stepKey(si,i)]) return false;
   }
   return true;
@@ -1634,7 +1666,10 @@ function renderScenarioInto(target, sc, si, opts={}){
   const bottomPad=28 + tipStripH;
   const oscil=Math.round(cardH*0.38);
   const rowH=topPad + cardH + oscil + bottomPad;
-  const rowGap=sc.wrapAfter?72:56;
+  const hasWrapLabels=sc.arrowLabels&&Object.keys(sc.arrowLabels).some(k=>{
+    const i=+k; return i>=0 && Math.floor(i/(sc.wrapAfter||sc.steps.length))!==Math.floor((i+1)/(sc.wrapAfter||sc.steps.length));
+  });
+  const rowGap=sc.wrapAfter?(hasWrapLabels?108:72):56;
   const fEmj=Math.round(cardW*0.17), fLbl=Math.max(11, cardW*0.09),
         fEnc=Math.max(9.5, cardW*0.068), fMeta=Math.max(9, cardW*0.062),
         fPill=Math.max(8.5, cardW*0.058);
@@ -1670,13 +1705,14 @@ function renderScenarioInto(target, sc, si, opts={}){
       const rot=(rand()*5-2.5).toFixed(2);
       pos.push({x,y,ri});
       const [emj,lbl,enc,stream,app,facilitator,interactive]=st; const s=STREAM[stream];
+      const autoStep=isAutoStep(st);
       const gi=streamToGroupIndex(groups, stream);
       const g=gi>=0?groups[gi]:null;
       const done=!!doneSteps[stepKey(si, thisStep)];
       const showLisa=trackDone && thisStep===lisaStep;
       const tips=Array.isArray(tipsByStep[thisStep])?tipsByStep[thisStep]:null;
       const isFinish=thisStep===lastStepIdx;
-      const note=document.createElement('div'); note.className='note'+(done?' done':'')+(isFinish?' note-finish':'');
+      const note=document.createElement('div'); note.className='note'+(done?' done':'')+(isFinish?' note-finish':'')+(autoStep?' note-auto':'');
       note.dataset.si=String(si);
       note.dataset.step=String(thisStep);
       note.style.left=x+'px'; note.style.top=y+'px'; note.style.width=cardW+'px';
@@ -1693,24 +1729,29 @@ function renderScenarioInto(target, sc, si, opts={}){
           `<div class="meta" style="font-size:${fMeta}px;font-weight:800">Group: ${escapeHtml(g.title.replace(/^Group \d+ — /,''))}</div>`+
           `<div style="display:flex;gap:2px;align-items:center;margin:2px 0">${faces}${extra}</div>`;
       }
-      const doneBtn=trackDone
+      const doneBtn=(trackDone && !autoStep)
         ? `<button type="button" class="done-stamp${done?' is-done':''}" style="font-size:${Math.max(9,fPill)}px" aria-pressed="${done?'true':'false'}" aria-label="${done?'Undo done':'Mark step done'}">`+
             `<span class="stamp-mark">${done?'✓':'○'}</span>`+
             `<span class="stamp-label">${done?(canEdit?'Undo ✓':escapeHtml(cheerForKey(stepKey(si, thisStep)))):'Done?'}</span>`+
           `</button>`
-        : '';
+        : (autoStep
+          ? `<div class="auto-stamp" style="font-size:${Math.max(9,fPill)}px"><span class="stamp-mark">⚡</span><span class="stamp-label">Auto</span></div>`
+          : '');
       const launchHint=interactive==='edReg'
         ? `<div class="edg-card-hint" style="font-size:${Math.max(8.5,fPill)}px">▶ Tap to open flowchart</div>`
         : interactive==='recurring'
         ? `<div class="edg-card-hint" style="font-size:${Math.max(8.5,fPill)}px">▶ Tap to open the demo</div>`
         : '';
+      const facLine=autoStep
+        ? ''
+        : `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`;
       note.innerHTML=
         (showLisa?lisaTrackerHtml():'')+
         (isFinish?`<div class="finish-ribbon">🏁 End of journey</div>`:'')+
         `<div class="emj" style="font-size:${fEmj}px">${emj}</div>`+
         `<div class="lbl" style="font-size:${fLbl}px">${lbl}</div>`+
         `<div class="enc" style="font-size:${fEnc}px;color:${s.ac}">${enc}</div>`+
-        `<div class="meta" style="font-size:${fMeta}px">Facilitator: ${facilitator||s.facilitator}</div>`+
+        facLine+
         (app?`<div class="meta" style="font-size:${fMeta}px">App: ${app}</div>`:'')+
         groupMeta+
         launchHint+
@@ -1738,7 +1779,7 @@ function renderScenarioInto(target, sc, si, opts={}){
           if(e.key==='Enter'||e.key===' '){ openGame(e); }
         });
       }
-      if(trackDone){
+      if(trackDone && !autoStep){
         const btn=note.querySelector('.done-stamp');
         if(done && canEdit) btn.title='Click to undo';
         btn.addEventListener('click',e=>{
@@ -1785,10 +1826,29 @@ function renderScenarioInto(target, sc, si, opts={}){
     if(a.ri===b.ri){
       drawArrow(svg, a.x+cardW, a.y+cardH/2, b.x, b.y+cardH/2, col, rand, arrowLabel);
     } else {
-      // If the source row has talking-point docks, route the wrap arrow below them
-      const laneY=rowTipBottom[a.ri]?rowTipBottom[a.ri]+32:null;
+      // If the source row has talking-point docks, route the wrap arrow below them.
+      // Extra room when the wrap carries a label so the chip sits in the gutter.
+      const labelPad=arrowLabel?36:0;
+      const laneY=rowTipBottom[a.ri]?rowTipBottom[a.ri]+32+labelPad:null;
       drawWrapArrow(svg, a, b, cardW, cardH, col, W, arrowLabel, laneY);
     }
+  }
+  // Tiny end-of-journey note (e.g. outpatient auto-discharge) — not a card
+  if(sc.endNote && pos.length){
+    const last=pos[pos.length-1];
+    const noteEl=document.createElement('div');
+    noteEl.className='journey-end-note';
+    noteEl.title=sc.endNote;
+    const spaceRight=W-(last.x+cardW);
+    if(spaceRight>170){
+      noteEl.style.left=(last.x+cardW+10)+'px';
+      noteEl.style.top=(last.y+cardH*0.38)+'px';
+    } else {
+      noteEl.style.left=Math.max(8, last.x+cardW*0.08)+'px';
+      noteEl.style.top=(last.y+cardH+10)+'px';
+    }
+    noteEl.innerHTML=`<span class="jen-ico" aria-hidden="true">🏡</span><span>${escapeHtml(sc.endNote)}</span>`;
+    canvas.appendChild(noteEl);
   }
   flow.appendChild(canvas); sec.appendChild(flow); target.appendChild(sec);
 }
@@ -2432,12 +2492,12 @@ document.getElementById('confirmRoles').addEventListener('click',()=>{
 
 /* ---- Participant spotlight (auto call-on helper) ---- */
 const SPOTLIGHT_PARTICIPANTS=[
-  'George Akaliro','Tomiwa Ilesanmi','Mani Vijayakumar','Anmolpreet Kaur','Robert Kugber',
-  'Phillip Knutzen','Boma Obeahon','Regina Boumsong','Heena Boricha','Ashwin John',
-  'Mirian Uduehi','Ammar Syed','Rafiat Bolaji','Heena Patel','Dharmik Gangani',
-  'Faye Sai','Dhyey Patel','Hetvi Prajapati','Abisola Rahman','Adewale Muibi',
-  'Faris Mohamed','Jen (Jenil) Savaliya','Jiali Huang','Mahmoud Atwi','Raymond Liu',
-  'Riley Chamberlain','Shruti (Antony) Predhep','Xiang Wang','Calistus Agbili','Cameron Hillliard'
+  'Oritsetsemaye (Maye) Whyte','Naomi Akinkuolie','Priscillia Okpaireh','Angela Ugbekile','Simarpreet Kaur',
+  'Bukola Matuluko','William Sladek','Aakriti Sharma','Stanley (Nzebuchukwu) Ekenedo','Sachira Herath Ralalage',
+  'Olalekan Olaniyan','Omouan Adeoye','Parth Gajera','Cameron Chisholm','Adeyemi Salawu',
+  'Leena Mascarenhas','Tonmoy Ghosh','Hemanath Senthilkumar','Hamza Ben Alla','Sneha Srinivas',
+  'Biliqis Oladosu','Jatin Sharma','Ebin Pallissery Jose','Anish Gondhi','Lex (Qianrong) Yang',
+  'Jenil Parsania','Shazia Mahammed','John Rentuma','Neel Soneji','Sid Gohil'
 ];
 (function initSpotlight(){
   const INTERVAL=60; // seconds between names
