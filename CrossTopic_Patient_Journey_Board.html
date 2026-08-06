@@ -797,7 +797,7 @@ const SCENARIOS = [
           ['📤','Results to provider','Lab / DI','Reg','PowerChart'],
           ['🏡','Discharge','Lab / DI','Reg','PM Office']]},
   {title:'MHA Clinic → Future Lab & DI', sub:'Outpatient · Register → Document → Orders → Lab → DI',
-   endNote:'⚡ Then auto-discharged (outpatient — no discharge visit)',
+   endNote:'⚡ Auto-discharged',
    steps:[['📝','Register patient','Outpatient','Reg','SchAppBook'],
           ['💬','MHA Provider documentation','Outpatient','MHA','PowerChart'],
           ['📋','Place future orders','Outpatient','MHA','PowerChart'],
@@ -1833,21 +1833,15 @@ function renderScenarioInto(target, sc, si, opts={}){
       drawWrapArrow(svg, a, b, cardW, cardH, col, W, arrowLabel, laneY);
     }
   }
-  // Tiny end-of-journey note (e.g. outpatient auto-discharge) — not a card
+  // Tiny end-of-journey note (e.g. outpatient auto-discharge) — sits under the last card
   if(sc.endNote && pos.length){
     const last=pos[pos.length-1];
     const noteEl=document.createElement('div');
     noteEl.className='journey-end-note';
     noteEl.title=sc.endNote;
-    const spaceRight=W-(last.x+cardW);
-    if(spaceRight>170){
-      noteEl.style.left=(last.x+cardW+10)+'px';
-      noteEl.style.top=(last.y+cardH*0.38)+'px';
-    } else {
-      noteEl.style.left=Math.max(8, last.x+cardW*0.08)+'px';
-      noteEl.style.top=(last.y+cardH+10)+'px';
-    }
-    noteEl.innerHTML=`<span class="jen-ico" aria-hidden="true">🏡</span><span>${escapeHtml(sc.endNote)}</span>`;
+    noteEl.style.left=Math.max(8, last.x)+'px';
+    noteEl.style.top=(last.y+cardH+10)+'px';
+    noteEl.innerHTML=`<span>${escapeHtml(sc.endNote)}</span>`;
     canvas.appendChild(noteEl);
   }
   flow.appendChild(canvas); sec.appendChild(flow); target.appendChild(sec);
